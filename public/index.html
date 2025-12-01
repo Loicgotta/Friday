@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Agent IA - Facebook/Meta</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1>🤖 Agent IA Friday</h1>
+                <p class="subtitle">Connectez votre compte Meta pour permettre à l'agent IA de gérer vos publicités et contenus</p>
+            </div>
+
+            <div id="error-message" class="error-message" style="display: none;"></div>
+
+            <div id="login-section" class="section">
+                <div class="info-box">
+                    <h3>📋 Permissions demandées</h3>
+                    <ul class="permissions-list">
+                        <li>✅ Créer et gérer des publicités (Marketing API)</li>
+                        <li>✅ Gérer les publicités d'applications (Meta Ads Manager)</li>
+                        <li>✅ Gérer les messages et contenus Instagram</li>
+                        <li>✅ Mesurer les performances publicitaires</li>
+                        <li>✅ Capturer et gérer les leads publicitaires</li>
+                        <li>✅ Gérer tout sur vos Pages Facebook</li>
+                    </ul>
+                </div>
+
+                <button id="facebook-login-btn" class="facebook-btn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    Se connecter avec Facebook
+                </button>
+
+                <p class="security-note">
+                    🔒 Vos données sont sécurisées. Vous pouvez révoquer l'accès à tout moment.
+                </p>
+            </div>
+
+            <div id="user-section" class="section" style="display: none;">
+                <div class="user-info">
+                    <h3>✅ Connecté</h3>
+                    <p id="user-name"></p>
+                    <button id="view-details-btn" class="secondary-btn">Voir les détails</button>
+                    <button id="logout-btn" class="danger-btn">Déconnexion</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Développé pour l'Agent IA Friday • Sécurisé par Meta OAuth 2.0</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
