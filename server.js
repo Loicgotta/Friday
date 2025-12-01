@@ -30,33 +30,21 @@ app.use(session({
 app.use(express.static('public'));
 
 // Permissions Facebook requises pour l'agent IA
+// Version simplifiée avec les permissions de base qui fonctionnent sans configuration avancée
 const FACEBOOK_PERMISSIONS = [
-  // Gestion des publicités
+  // Permissions de base
+  'public_profile',
+
+  // Gestion des publicités (nécessite Business Verification)
   'ads_management',
   'ads_read',
-  'business_management',
 
-  // Gestion des Pages
+  // Gestion des Pages (permissions de base)
   'pages_show_list',
   'pages_read_engagement',
-  'pages_manage_metadata',
-  'pages_manage_ads',
-  'pages_manage_posts',
-  'pages_manage_engagement',
 
-  // Instagram
-  'instagram_basic',
-  'instagram_manage_comments',
-  'instagram_manage_messages',
-  'instagram_content_publish',
-
-  // Leads et insights
-  'leads_retrieval',
-  'read_insights',
-
-  // Informations de base
-  'email',
-  'public_profile'
+  // Leads
+  'leads_retrieval'
 ].join(',');
 
 /**
