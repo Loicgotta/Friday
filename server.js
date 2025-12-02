@@ -30,22 +30,18 @@ app.use(session({
 app.use(express.static('public'));
 
 // Permissions Facebook requises pour l'agent IA
-// Version simplifiée avec les permissions de base qui fonctionnent sans configuration avancée
+// Version MINIMALE - Fonctionne en mode Live sans App Review
 const FACEBOOK_PERMISSIONS = [
-  // Permissions de base
+  // Permissions de base (toujours disponibles)
   'public_profile',
 
-  // Gestion des publicités (nécessite Business Verification)
-  'ads_management',
-  'ads_read',
-
-  // Gestion des Pages (permissions de base)
+  // Gestion des Pages (permissions de base sans App Review)
   'pages_show_list',
-  'pages_read_engagement',
-
-  // Leads
-  'leads_retrieval'
+  'pages_read_engagement'
 ].join(',');
+
+// REMARQUE: Pour ajouter ads_management, ads_read, leads_retrieval, etc.
+// vous devez d'abord compléter l'App Review sur Meta for Developers
 
 /**
  * Route 1: Initier le processus d'authentification Facebook
