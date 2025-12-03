@@ -74,7 +74,8 @@ app.get('/auth/facebook/callback', async (req, res) => {
 
   try {
     // Échanger le code contre un access token
-    const tokenResponse = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
+    // Note: L'endpoint oauth/access_token ne nécessite PAS de numéro de version
+    const tokenResponse = await axios.get('https://graph.facebook.com/oauth/access_token', {
       params: {
         client_id: process.env.FACEBOOK_APP_ID,
         client_secret: process.env.FACEBOOK_APP_SECRET,
@@ -86,7 +87,7 @@ app.get('/auth/facebook/callback', async (req, res) => {
     const { access_token, expires_in } = tokenResponse.data;
 
     // Échanger le short-lived token contre un long-lived token
-    const longLivedTokenResponse = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
+    const longLivedTokenResponse = await axios.get('https://graph.facebook.com/oauth/access_token', {
       params: {
         grant_type: 'fb_exchange_token',
         client_id: process.env.FACEBOOK_APP_ID,
@@ -115,17 +116,22 @@ app.get('/auth/facebook/callback', async (req, res) => {
       }
     });
 
-    const pages = accountsResponse.data.data;
+    const pages = accountsResponse.data.data || [];
 
-    // Récupérer les comptes publicitaires
-    const adAccountsResponse = await axios.get('https://graph.facebook.com/v18.0/me/adaccounts', {
-      params: {
-        fields: 'id,name,account_id,account_status',
-        access_token: longLivedToken
-      }
-    });
-
-    const adAccounts = adAccountsResponse.data.data;
+    // Récupérer les comptes publicitaires (optionnel - nécessite ads_management)
+    let adAccounts = [];
+    try {
+      const adAccountsResponse = await axios.get('https://graph.facebook.com/v18.0/me/adaccounts', {
+        params: {
+          fields: 'id,name,account_id,account_status',
+          access_token: longLivedToken
+        }
+      });
+      adAccounts = adAccountsResponse.data.data || [];
+    } catch (adError) {
+      // L'utilisateur n'a probablement pas la permission ads_management
+      console.log('Info: Impossible de récupérer les comptes publicitaires (permission manquante)');
+    }
 
     // Récupérer les permissions accordées
     const permissionsResponse = await axios.get('https://graph.facebook.com/v18.0/me/permissions', {
