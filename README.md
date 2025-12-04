@@ -1,245 +1,170 @@
-# 🤖 Friday - Agent IA Facebook/Meta OAuth
+# Friday - Agent IA avec Google Drive et RAG
 
-Système d'authentification OAuth pour permettre aux utilisateurs de donner accès à leurs comptes Meta/Facebook à un agent IA.
+Agent IA intelligent qui se connecte a votre Google Drive et repond a vos questions sur vos documents en utilisant la methode RAG (Retrieval-Augmented Generation).
 
-## 📋 Fonctionnalités
+## Fonctionnalites
 
-L'agent IA aura accès aux fonctionnalités suivantes une fois l'utilisateur connecté :
+- **Connexion Google Drive** : Acces securise en lecture seule a vos documents
+- **Indexation automatique** : Support des PDF, Google Docs, Word, texte, Markdown, CSV, JSON
+- **Systeme RAG** : Recherche semantique avec embeddings OpenAI
+- **Interface de chat** : Posez vos questions en langage naturel
+- **Historique des conversations** : Sauvegarde automatique des echanges
 
-- ✅ Créer et gérer des publicités (Marketing API)
-- ✅ Gérer les publicités d'applications (Meta Ads Manager)
-- ✅ Gérer les messages et contenus Instagram
-- ✅ Mesurer les performances publicitaires (Marketing API)
-- ✅ Capturer et gérer les leads publicitaires
-- ✅ Gérer tout sur les Pages Facebook
+## Deploiement sur Render
 
-## 🚀 Installation
+### 1. Configuration Google Cloud Console
 
-### 1. Installer les dépendances
+1. Allez sur [Google Cloud Console](https://console.cloud.google.com/)
+2. Creez un nouveau projet ou selectionnez-en un existant
+3. Activez l'API Google Drive :
+   - Allez dans "APIs & Services" > "Library"
+   - Recherchez "Google Drive API" et activez-la
+4. Configurez l'ecran de consentement OAuth :
+   - "APIs & Services" > "OAuth consent screen"
+   - Choisissez "External" (ou "Internal" pour G Suite)
+   - Remplissez les informations requises
+   - Ajoutez les scopes : `drive.readonly`, `userinfo.email`, `userinfo.profile`
+5. Creez les identifiants OAuth :
+   - "APIs & Services" > "Credentials"
+   - "Create Credentials" > "OAuth client ID"
+   - Type : "Web application"
+   - Ajoutez l'URI de redirection : `https://votre-app.onrender.com/auth/google/callback`
+
+### 2. Deploiement sur Render
+
+1. Connectez votre repo GitHub a Render
+2. Creez un nouveau "Web Service"
+3. Configurez les variables d'environnement :
+
+```
+GOOGLE_CLIENT_ID=votre_client_id
+GOOGLE_CLIENT_SECRET=votre_client_secret
+OPENAI_API_KEY=votre_cle_openai
+SESSION_SECRET=une_chaine_aleatoire_longue
+BASE_URL=https://votre-app.onrender.com
+CALLBACK_URL=https://votre-app.onrender.com/auth/google/callback
+NODE_ENV=production
+```
+
+4. Build command : `npm install`
+5. Start command : `npm start`
+
+### 3. Configuration locale (developpement)
 
 ```bash
+# Cloner le repo
+git clone <repo-url>
+cd Friday
+
+# Installer les dependances
 npm install
-```
 
-### 2. Configuration de l'application Meta
+# Creer le fichier .env
+cp .env.example .env
 
-Avant de démarrer, vous devez configurer votre application Meta for Developers :
+# Editer .env avec vos credentials
+# GOOGLE_CLIENT_ID=...
+# GOOGLE_CLIENT_SECRET=...
+# OPENAI_API_KEY=...
 
-1. **Allez sur [Meta for Developers](https://developers.facebook.com/)**
-
-2. **Configurez les paramètres OAuth :**
-   - Dans le tableau de bord de votre app, allez dans **Paramètres > De base**
-   - Ajoutez l'URL de redirection OAuth valide :
-     ```
-     http://localhost:3000/auth/facebook/callback
-     ```
-
-3. **Activez les produits nécessaires :**
-   - Facebook Login
-   - Marketing API
-   - Instagram API
-   - Pages API
-
-4. **Configurez les cas d'usage :**
-   - Create & manage ads with Marketing API
-   - Create & manage app ads with Meta Ads Manager
-   - Manage messaging & content on Instagram
-   - Measure ad performance data with Marketing API
-   - Capture & manage ad leads with Marketing API
-   - Manage everything on your Page
-
-5. **Mode de développement :**
-   - Ajoutez des testeurs dans **Rôles > Testeurs** si votre app est en mode développement
-   - Pour utiliser en production, soumettez votre app pour révision
-
-### 3. Variables d'environnement
-
-Les credentials sont déjà configurés dans le fichier `.env` :
-
-```env
-FACEBOOK_APP_ID=1364606882072627
-FACEBOOK_APP_SECRET=c2678977b6377bea89abf2924d4dea64
-PORT=3000
-CALLBACK_URL=http://localhost:3000/auth/facebook/callback
-SESSION_SECRET=votre_secret_session_aleatoire_tres_securise_123456
-FRONTEND_URL=http://localhost:3000
-```
-
-⚠️ **IMPORTANT** : Changez le `SESSION_SECRET` pour une valeur aléatoire sécurisée en production !
-
-## 🎯 Démarrage
-
-### Mode développement
-
-```bash
+# Demarrer en mode developpement
 npm run dev
 ```
 
-### Mode production
+## Utilisation
 
-```bash
-npm start
-```
+1. **Connexion** : Cliquez sur "Connecter Google Drive" sur la page d'accueil
+2. **Autorisation** : Autorisez l'acces en lecture a votre Drive
+3. **Synchronisation** : Cliquez sur "Synchroniser Drive" pour indexer vos documents
+4. **Chat** : Posez vos questions sur vos documents
 
-Le serveur démarrera sur `http://localhost:3000`
+### Exemples de questions
 
-## 📖 Utilisation
+- "Resume-moi le contenu de mon document sur le projet X"
+- "Quelles sont les deadlines mentionnees dans mes documents ?"
+- "Compare les informations entre le rapport A et le rapport B"
+- "Trouve les coordonnees de contact dans mes fichiers"
 
-### Pour les utilisateurs
-
-1. Ouvrez `http://localhost:3000` dans votre navigateur
-2. Cliquez sur "Se connecter avec Facebook"
-3. Autorisez les permissions demandées
-4. Vous serez redirigé vers la page de succès avec vos informations
-
-### Pour l'agent IA
-
-L'agent IA peut récupérer les tokens d'accès de tous les utilisateurs via l'API :
-
-```bash
-GET http://localhost:3000/api/users
-```
-
-**Réponse :**
-```json
-[
-  {
-    "id": 1,
-    "facebook_id": "123456789",
-    "name": "John Doe",
-    "email": "john@example.com",
-    "access_token": "EAAxxxxxxxx...",
-    "expires_at": "2025-03-01T12:00:00.000Z",
-    "permissions": ["ads_management", "pages_manage_ads", ...],
-    "pages": [
-      {
-        "id": "page123",
-        "name": "Ma Page",
-        "access_token": "EAAyyyyyy..."
-      }
-    ],
-    "ad_accounts": [
-      {
-        "id": "act_123456",
-        "name": "Mon Compte Pub",
-        "account_id": "123456"
-      }
-    ],
-    "created_at": "2025-01-15T10:30:00.000Z",
-    "updated_at": "2025-01-15T10:30:00.000Z"
-  }
-]
-```
-
-## 🔑 API Endpoints
-
-### Authentification
-
-- `GET /auth/facebook` - Initier l'authentification Facebook
-- `GET /auth/facebook/callback` - Callback OAuth
-- `GET /auth/logout` - Déconnexion
-
-### API
-
-- `GET /api/status` - Vérifier le statut de connexion
-- `GET /api/user` - Obtenir les infos de l'utilisateur connecté
-- `GET /api/users` - Obtenir tous les utilisateurs (pour l'agent IA)
-- `POST /api/revoke` - Révoquer l'accès d'un utilisateur
-
-## 📊 Structure du projet
+## Architecture
 
 ```
 Friday/
-├── server.js              # Serveur Express principal
-├── database.js            # Gestion de la base de données SQLite
-├── package.json           # Dépendances du projet
-├── .env                   # Configuration (credentials Meta)
-├── .gitignore            # Fichiers à ignorer par Git
-├── README.md             # Documentation
-└── public/               # Interface frontend
-    ├── index.html        # Page de connexion
-    ├── success.html      # Page de succès
-    ├── styles.css        # Styles CSS
-    └── script.js         # JavaScript frontend
+├── server.js                 # Serveur Express principal
+├── database.js               # Gestion SQLite (utilisateurs, conversations)
+├── services/
+│   ├── googleAuth.js         # Authentification OAuth Google
+│   ├── driveService.js       # Acces et lecture Google Drive
+│   └── ragService.js         # Indexation et RAG avec OpenAI
+├── public/
+│   ├── index.html            # Page d'accueil
+│   ├── chat.html             # Interface de chat
+│   └── styles.css            # Styles
+├── render.yaml               # Configuration Render
+└── package.json
 ```
 
-## 🗄️ Base de données
+## API Endpoints
 
-Les données sont stockées dans `users.db` (SQLite) avec la structure suivante :
+### Authentification
+- `GET /auth/google` - Demarrer l'authentification Google
+- `GET /auth/google/callback` - Callback OAuth
+- `GET /auth/logout` - Deconnexion
+- `GET /api/status` - Statut de connexion
 
-```sql
-CREATE TABLE users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  facebook_id TEXT UNIQUE NOT NULL,
-  name TEXT NOT NULL,
-  email TEXT,
-  access_token TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  permissions TEXT,           -- JSON array
-  pages TEXT,                 -- JSON array
-  ad_accounts TEXT,           -- JSON array
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-)
-```
+### Google Drive
+- `GET /api/drive/files` - Lister les fichiers
+- `GET /api/drive/stats` - Statistiques du Drive
+- `POST /api/drive/sync` - Synchroniser et indexer les documents
 
-## 🔒 Sécurité
+### Chat
+- `GET /api/conversations` - Liste des conversations
+- `POST /api/conversations` - Nouvelle conversation
+- `DELETE /api/conversations/:id` - Supprimer une conversation
+- `GET /api/conversations/:id/messages` - Messages d'une conversation
+- `POST /api/chat` - Envoyer un message et obtenir une reponse
 
-- Les tokens d'accès sont des **long-lived tokens** (60 jours)
-- Les sessions sont sécurisées avec un secret
-- Les credentials ne sont jamais exposés au frontend
-- Les utilisateurs peuvent révoquer l'accès à tout moment
+### Index
+- `GET /api/index/stats` - Statistiques de l'index RAG
 
-## 🛠️ Gestion des tokens
+## Formats de fichiers supportes
 
-Les tokens Facebook expirent après 60 jours. Pour vérifier les tokens expirants :
+- PDF (`.pdf`)
+- Google Docs
+- Google Sheets (export CSV)
+- Microsoft Word (`.docx`)
+- Texte (`.txt`)
+- Markdown (`.md`)
+- CSV (`.csv`)
+- JSON (`.json`)
+- HTML (`.html`)
 
-```javascript
-const db = new Database();
-const expiringUsers = await db.getUsersWithExpiringTokens(7); // 7 jours avant expiration
-```
+## Securite
 
-## 🌐 Utilisation de l'API Facebook
+- Acces en lecture seule au Google Drive
+- Tokens stockes de maniere securisee
+- Sessions chiffrees
+- Possibilite de revoquer l'acces a tout moment
+- Les documents ne sont pas stockes, seuls les embeddings sont conserves en memoire
 
-Exemple d'utilisation du token pour créer une publicité :
+## Variables d'environnement
 
-```javascript
-const axios = require('axios');
+| Variable | Description | Requis |
+|----------|-------------|--------|
+| `GOOGLE_CLIENT_ID` | Client ID Google OAuth | Oui |
+| `GOOGLE_CLIENT_SECRET` | Client Secret Google OAuth | Oui |
+| `OPENAI_API_KEY` | Cle API OpenAI | Oui |
+| `SESSION_SECRET` | Secret pour les sessions | Oui |
+| `BASE_URL` | URL de base de l'application | Oui |
+| `CALLBACK_URL` | URL de callback OAuth | Oui |
+| `PORT` | Port du serveur (defaut: 3000) | Non |
+| `NODE_ENV` | Environnement (development/production) | Non |
 
-// Récupérer le token d'un utilisateur
-const users = await fetch('http://localhost:3000/api/users').then(r => r.json());
-const user = users[0];
+## Limitations
 
-// Créer une publicité
-const response = await axios.post(
-  `https://graph.facebook.com/v18.0/${user.ad_accounts[0].id}/ads`,
-  {
-    name: 'Ma Publicité',
-    status: 'PAUSED',
-    // ... autres paramètres
-  },
-  {
-    params: {
-      access_token: user.access_token
-    }
-  }
-);
-```
+- L'index RAG est stocke en memoire (se reinitialise au redemarrage)
+- Maximum ~1000 documents par utilisateur recommande
+- Les fichiers Excel ne sont pas entierement supportes
 
-## 📝 Notes importantes
+## Licence
 
-1. **Mode développement** : Seuls les utilisateurs ajoutés comme testeurs peuvent se connecter
-2. **Production** : Soumettez votre app pour révision avant de la rendre publique
-3. **HTTPS** : En production, utilisez HTTPS et mettez à jour `CALLBACK_URL`
-4. **Webhooks** : Configurez des webhooks pour être notifié des changements
-
-## 🤝 Support
-
-Pour toute question ou problème :
-- Consultez la [documentation Meta for Developers](https://developers.facebook.com/docs/)
-- Vérifiez que tous les cas d'usage sont bien configurés dans votre app
-- Assurez-vous que les testeurs sont ajoutés en mode développement
-
-## 📄 Licence
-
-Ce projet est fourni tel quel pour l'agent IA Friday.
+MIT

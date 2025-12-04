@@ -2,6 +2,10 @@ node_modules/
 .env
 *.db
 *.sqlite
+*.db-wal
+*.db-shm
 .DS_Store
 npm-debug.log
 .vscode/
+friday.db
+users.db

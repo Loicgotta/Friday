@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Friday - Chat</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="chat-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="user-info">
+          <div class="user-avatar" id="user-avatar">?</div>
+          <div class="user-details">
+            <div class="user-name" id="user-name">Chargement...</div>
+            <div class="user-email" id="user-email"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-actions">
+        <button class="btn btn-primary" id="new-chat-btn" style="width: 100%;">
+          + Nouvelle conversation
+        </button>
+        <button class="btn btn-secondary" id="sync-btn" style="width: 100%;">
+          Synchroniser Drive
+        </button>
+        <div class="sync-status not-synced" id="sync-status">
+          Non synchronise
+        </div>
+      </div>
+
+      <div class="conversations-list" id="conversations-list">
+        <div class="conversations-title">Conversations</div>
+        <!-- Conversations will be loaded here -->
+      </div>
+
+      <div class="sidebar-footer">
+        <a href="/auth/logout" class="btn btn-secondary btn-sm" style="width: 100%;">
+          Deconnexion
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="chat-main">
+      <header class="chat-header">
+        <h2 id="chat-title">Friday</h2>
+        <div class="index-stats" id="index-stats"></div>
+      </header>
+
+      <div class="messages-container" id="messages-container">
+        <div class="welcome-message" id="welcome-message">
+          <h3>Bienvenue sur Friday!</h3>
+          <p>Synchronisez vos documents Google Drive puis posez vos questions.</p>
+          <p>Je peux analyser, resumer et repondre a vos questions sur votre documentation.</p>
+        </div>
+      </div>
+
+      <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+          <textarea
+            class="chat-input"
+            id="message-input"
+            placeholder="Posez votre question..."
+            rows="1"
+          ></textarea>
+          <button class="send-button" id="send-btn">Envoyer</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Sync Modal -->
+  <div class="modal-overlay" id="sync-modal" style="display: none;">
+    <div class="modal">
+      <h3>Synchronisation en cours...</h3>
+      <p id="sync-progress">Recuperation des fichiers de votre Drive...</p>
+      <div class="loading-indicator">
+        <div class="loading-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let currentUser = null;
+    let currentConversationId = null;
+    let conversations = [];
+
+    // DOM Elements
+    const userAvatar = document.getElementById('user-avatar');
+    const userName = document.getElementById('user-name');
+    const userEmail = document.getElementById('user-email');
+    const syncStatus = document.getElementById('sync-status');
+    const indexStats = document.getElementById('index-stats');
+    const conversationsList = document.getElementById('conversations-list');
+    const messagesContainer = document.getElementById('messages-container');
+    const welcomeMessage = document.getElementById('welcome-message');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const newChatBtn = document.getElementById('new-chat-btn');
+    const syncBtn = document.getElementById('sync-btn');
+    const syncModal = document.getElementById('sync-modal');
+    const syncProgress = document.getElementById('sync-progress');
+    const chatTitle = document.getElementById('chat-title');
+
+    // Initialize
+    async function init() {
+      await checkAuth();
+      await loadConversations();
+      await loadIndexStats();
+    }
+
+    // Check authentication
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+
+        if (!data.authenticated) {
+          window.location.href = '/';
+          return;
+        }
+
+        currentUser = data.user;
+        updateUserUI();
+      } catch (error) {
+        console.error('Auth check error:', error);
+        window.location.href = '/';
+      }
+    }
+
+    // Update user UI
+    function updateUserUI() {
+      if (currentUser.picture) {
+        userAvatar.innerHTML = `<img src="${currentUser.picture}" alt="Avatar">`;
+      } else {
+        userAvatar.textContent = currentUser.name.charAt(0).toUpperCase();
+      }
+      userName.textContent = currentUser.name;
+      userEmail.textContent = currentUser.email;
+    }
+
+    // Load index stats
+    async function loadIndexStats() {
+      try {
+        const res = await fetch('/api/index/stats');
+        const data = await res.json();
+
+        if (data.indexed && data.totalDocuments > 0) {
+          syncStatus.textContent = `${data.totalDocuments} documents indexes`;
+          syncStatus.className = 'sync-status synced';
+          indexStats.textContent = `${data.totalChunks} segments indexes`;
+        } else {
+          syncStatus.textContent = 'Non synchronise';
+          syncStatus.className = 'sync-status not-synced';
+          indexStats.textContent = '';
+        }
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      }
+    }
+
+    // Load conversations
+    async function loadConversations() {
+      try {
+        const res = await fetch('/api/conversations');
+        conversations = await res.json();
+        renderConversations();
+      } catch (error) {
+        console.error('Error loading conversations:', error);
+      }
+    }
+
+    // Render conversations list
+    function renderConversations() {
+      const list = conversationsList.querySelector('.conversations-title');
+      conversationsList.innerHTML = '';
+      conversationsList.appendChild(list);
+
+      if (conversations.length === 0) {
+        conversationsList.innerHTML += '<p style="padding: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">Aucune conversation</p>';
+        return;
+      }
+
+      conversations.forEach(conv => {
+        const item = document.createElement('div');
+        item.className = `conversation-item ${conv.id === currentConversationId ? 'active' : ''}`;
+        item.innerHTML = `
+          <span class="conversation-title">${escapeHtml(conv.title)}</span>
+          <button class="conversation-delete" onclick="deleteConversation('${conv.id}', event)">x</button>
+        `;
+        item.onclick = () => selectConversation(conv.id);
+        conversationsList.appendChild(item);
+      });
+    }
+
+    // Select conversation
+    async function selectConversation(convId) {
+      currentConversationId = convId;
+      renderConversations();
+
+      const conv = conversations.find(c => c.id === convId);
+      if (conv) {
+        chatTitle.textContent = conv.title;
+      }
+
+      // Load messages
+      try {
+        const res = await fetch(`/api/conversations/${convId}/messages`);
+        const messages = await res.json();
+        renderMessages(messages);
+      } catch (error) {
+        console.error('Error loading messages:', error);
+      }
+    }
+
+    // Delete conversation
+    async function deleteConversation(convId, event) {
+      event.stopPropagation();
+
+      if (!confirm('Supprimer cette conversation ?')) return;
+
+      try {
+        await fetch(`/api/conversations/${convId}`, { method: 'DELETE' });
+
+        if (currentConversationId === convId) {
+          currentConversationId = null;
+          welcomeMessage.style.display = 'block';
+          chatTitle.textContent = 'Friday';
+        }
+
+        await loadConversations();
+      } catch (error) {
+        console.error('Error deleting conversation:', error);
+      }
+    }
+
+    // Render messages
+    function renderMessages(messages) {
+      messagesContainer.innerHTML = '';
+      welcomeMessage.style.display = messages.length === 0 ? 'block' : 'none';
+
+      messages.forEach(msg => {
+        addMessageToUI(msg.role, msg.content, msg.sources);
+      });
+
+      scrollToBottom();
+    }
+
+    // Add message to UI
+    function addMessageToUI(role, content, sources = null) {
+      welcomeMessage.style.display = 'none';
+
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message ${role}`;
+
+      let html = `<div class="message-content">${escapeHtml(content)}</div>`;
+
+      if (sources && sources.length > 0) {
+        html += `
+          <div class="message-sources">
+            <strong>Sources:</strong>
+            ${sources.map(s => `<span class="source-tag">${escapeHtml(s)}</span>`).join('')}
+          </div>
+        `;
+      }
+
+      msgDiv.innerHTML = html;
+      messagesContainer.appendChild(msgDiv);
+      scrollToBottom();
+    }
+
+    // Show loading indicator
+    function showLoading() {
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'loading-indicator';
+      loadingDiv.id = 'loading-indicator';
+      loadingDiv.innerHTML = `
+        <div class="loading-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <span>Friday reflechit...</span>
+      `;
+      messagesContainer.appendChild(loadingDiv);
+      scrollToBottom();
+    }
+
+    // Hide loading indicator
+    function hideLoading() {
+      const loading = document.getElementById('loading-indicator');
+      if (loading) loading.remove();
+    }
+
+    // Send message
+    async function sendMessage() {
+      const message = messageInput.value.trim();
+      if (!message) return;
+
+      // Add user message to UI
+      addMessageToUI('user', message);
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+
+      // Disable input
+      sendBtn.disabled = true;
+      messageInput.disabled = true;
+      showLoading();
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            conversationId: currentConversationId
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        hideLoading();
+
+        // Update conversation ID if new
+        if (!currentConversationId) {
+          currentConversationId = data.conversationId;
+          await loadConversations();
+        }
+
+        // Add assistant response
+        addMessageToUI('assistant', data.answer, data.sources);
+
+      } catch (error) {
+        hideLoading();
+        console.error('Error sending message:', error);
+        addMessageToUI('assistant', 'Erreur: ' + error.message);
+      } finally {
+        sendBtn.disabled = false;
+        messageInput.disabled = false;
+        messageInput.focus();
+      }
+    }
+
+    // Sync Drive
+    async function syncDrive() {
+      syncModal.style.display = 'flex';
+      syncProgress.textContent = 'Recuperation des fichiers de votre Drive...';
+
+      try {
+        const res = await fetch('/api/drive/sync', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        syncProgress.textContent = `Synchronisation terminee! ${data.indexed} documents indexes (${data.totalChunks} segments)`;
+
+        setTimeout(() => {
+          syncModal.style.display = 'none';
+          loadIndexStats();
+        }, 2000);
+
+      } catch (error) {
+        syncProgress.textContent = 'Erreur: ' + error.message;
+        setTimeout(() => {
+          syncModal.style.display = 'none';
+        }, 3000);
+      }
+    }
+
+    // New chat
+    function newChat() {
+      currentConversationId = null;
+      chatTitle.textContent = 'Friday';
+      messagesContainer.innerHTML = '';
+      welcomeMessage.style.display = 'block';
+      renderConversations();
+    }
+
+    // Utility functions
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function scrollToBottom() {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Auto-resize textarea
+    messageInput.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+    });
+
+    // Event listeners
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    newChatBtn.addEventListener('click', newChat);
+    syncBtn.addEventListener('click', syncDrive);
+
+    // Initialize
+    init();
+  </script>
+</body>
+</html>
