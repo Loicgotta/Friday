@@ -4,9 +4,11 @@ const session = require('express-session');
 const axios = require('axios');
 const cors = require('cors');
 const Database = require('./database');
+const CommentMonitor = require('./comment-monitor');
 
 const app = express();
 const db = new Database();
+const commentMonitor = new CommentMonitor();
 
 // Middleware
 app.use(cors({
@@ -285,6 +287,113 @@ app.get('/api/status', (req, res) => {
 });
 
 /**
+ * Route 8: Sauvegarder la configuration d'un agent IA
+ */
+app.post('/api/agent/config', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    const user = await db.getUserByFacebookId(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const { page_id, is_active, prompt, tone, language, auto_reply_enabled, reply_delay_minutes } = req.body;
+
+    if (!page_id || !prompt) {
+      return res.status(400).json({ error: 'page_id et prompt sont requis' });
+    }
+
+    await db.saveAgentConfig({
+      user_id: user.id,
+      page_id,
+      is_active: is_active || false,
+      prompt,
+      tone: tone || 'friendly',
+      language: language || 'fr',
+      auto_reply_enabled: auto_reply_enabled !== false,
+      reply_delay_minutes: reply_delay_minutes || 0
+    });
+
+    res.json({ success: true, message: 'Configuration sauvegardée' });
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde de la config:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Route 9: Récupérer la configuration d'un agent pour une page
+ */
+app.get('/api/agent/config/:pageId', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    const user = await db.getUserByFacebookId(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const config = await db.getAgentConfig(user.id, req.params.pageId);
+
+    if (!config) {
+      return res.status(404).json({ error: 'Configuration non trouvée' });
+    }
+
+    res.json(config);
+  } catch (error) {
+    console.error('Erreur lors de la récupération de la config:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Route 10: Récupérer les statistiques de l'agent
+ */
+app.get('/api/agent/stats', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    const user = await db.getUserByFacebookId(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Récupérer les configs de l'utilisateur
+    const configs = await db.getUserAgentConfigs(user.id);
+
+    // Compter les réponses
+    const responsesCount = await new Promise((resolve, reject) => {
+      db.db.get(
+        'SELECT COUNT(*) as count FROM processed_comments WHERE user_id = ?',
+        [user.id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.count);
+        }
+      );
+    });
+
+    const stats = {
+      total_responses: responsesCount,
+      total_pages: configs.length,
+      active_agents: configs.filter(c => c.is_active === 1).length
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des stats:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
  * Fonction utilitaire pour générer un state aléatoire (protection CSRF)
  */
 function generateState() {
@@ -299,7 +408,13 @@ db.init().then(() => {
     console.log(`\n🚀 Serveur démarré sur http://localhost:${PORT}`);
     console.log(`📱 Interface d'authentification: http://localhost:${PORT}`);
     console.log(`🤖 API pour l'agent IA: http://localhost:${PORT}/api/users`);
+    console.log(`⚙️  Configuration agent IA: http://localhost:${PORT}/agent-config.html`);
     console.log('\n✅ Prêt à recevoir des connexions Facebook!\n');
+
+    // Démarrer le monitoring des commentaires
+    commentMonitor.start().catch(err => {
+      console.error('❌ Erreur lors du démarrage du monitoring:', err);
+    });
   });
 }).catch(error => {
   console.error('Erreur lors de l\'initialisation de la base de données:', error);

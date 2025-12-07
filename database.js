@@ -46,15 +46,63 @@ class Database {
       )
     `;
 
+    const createAgentConfigsTable = `
+      CREATE TABLE IF NOT EXISTS agent_configs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        page_id TEXT NOT NULL,
+        is_active INTEGER DEFAULT 0,
+        prompt TEXT NOT NULL,
+        tone TEXT DEFAULT 'friendly',
+        language TEXT DEFAULT 'fr',
+        auto_reply_enabled INTEGER DEFAULT 1,
+        reply_delay_minutes INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        UNIQUE(user_id, page_id)
+      )
+    `;
+
+    const createProcessedCommentsTable = `
+      CREATE TABLE IF NOT EXISTS processed_comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        comment_id TEXT UNIQUE NOT NULL,
+        post_id TEXT NOT NULL,
+        page_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        replied_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        reply_text TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `;
+
     return new Promise((resolve, reject) => {
-      this.db.run(createUsersTable, (err) => {
-        if (err) {
-          console.error('Erreur lors de la création de la table:', err);
-          reject(err);
-        } else {
+      this.db.serialize(() => {
+        this.db.run(createUsersTable, (err) => {
+          if (err) {
+            console.error('Erreur lors de la création de la table users:', err);
+            return reject(err);
+          }
           console.log('✅ Table users créée/vérifiée');
+        });
+
+        this.db.run(createAgentConfigsTable, (err) => {
+          if (err) {
+            console.error('Erreur lors de la création de la table agent_configs:', err);
+            return reject(err);
+          }
+          console.log('✅ Table agent_configs créée/vérifiée');
+        });
+
+        this.db.run(createProcessedCommentsTable, (err) => {
+          if (err) {
+            console.error('Erreur lors de la création de la table processed_comments:', err);
+            return reject(err);
+          }
+          console.log('✅ Table processed_comments créée/vérifiée');
           resolve();
-        }
+        });
       });
     });
   }
@@ -176,6 +224,144 @@ class Database {
           reject(err);
         } else {
           resolve(rows || []);
+        }
+      });
+    });
+  }
+
+  /**
+   * Sauvegarder ou mettre à jour une configuration d'agent IA
+   */
+  async saveAgentConfig(config) {
+    const {
+      user_id,
+      page_id,
+      is_active,
+      prompt,
+      tone,
+      language,
+      auto_reply_enabled,
+      reply_delay_minutes
+    } = config;
+
+    const query = `
+      INSERT INTO agent_configs (user_id, page_id, is_active, prompt, tone, language, auto_reply_enabled, reply_delay_minutes, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id, page_id) DO UPDATE SET
+        is_active = excluded.is_active,
+        prompt = excluded.prompt,
+        tone = excluded.tone,
+        language = excluded.language,
+        auto_reply_enabled = excluded.auto_reply_enabled,
+        reply_delay_minutes = excluded.reply_delay_minutes,
+        updated_at = CURRENT_TIMESTAMP
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        query,
+        [user_id, page_id, is_active ? 1 : 0, prompt, tone, language, auto_reply_enabled ? 1 : 0, reply_delay_minutes],
+        function(err) {
+          if (err) {
+            console.error('Erreur lors de la sauvegarde de la config agent:', err);
+            reject(err);
+          } else {
+            console.log(`✅ Configuration agent sauvegardée pour page ${page_id}`);
+            resolve(this.lastID);
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * Récupérer la configuration d'agent pour une page spécifique
+   */
+  async getAgentConfig(userId, pageId) {
+    const query = 'SELECT * FROM agent_configs WHERE user_id = ? AND page_id = ?';
+
+    return new Promise((resolve, reject) => {
+      this.db.get(query, [userId, pageId], (err, row) => {
+        if (err) {
+          console.error('Erreur lors de la récupération de la config agent:', err);
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  /**
+   * Récupérer toutes les configurations actives
+   */
+  async getActiveAgentConfigs() {
+    const query = 'SELECT * FROM agent_configs WHERE is_active = 1';
+
+    return new Promise((resolve, reject) => {
+      this.db.all(query, [], (err, rows) => {
+        if (err) {
+          console.error('Erreur lors de la récupération des configs actives:', err);
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
+  }
+
+  /**
+   * Récupérer toutes les configurations d'un utilisateur
+   */
+  async getUserAgentConfigs(userId) {
+    const query = 'SELECT * FROM agent_configs WHERE user_id = ?';
+
+    return new Promise((resolve, reject) => {
+      this.db.all(query, [userId], (err, rows) => {
+        if (err) {
+          console.error('Erreur lors de la récupération des configs utilisateur:', err);
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
+  }
+
+  /**
+   * Marquer un commentaire comme traité
+   */
+  async markCommentAsProcessed(commentId, postId, pageId, userId, replyText) {
+    const query = `
+      INSERT INTO processed_comments (comment_id, post_id, page_id, user_id, reply_text)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(query, [commentId, postId, pageId, userId, replyText], function(err) {
+        if (err) {
+          console.error('Erreur lors du marquage du commentaire:', err);
+          reject(err);
+        } else {
+          resolve(this.lastID);
+        }
+      });
+    });
+  }
+
+  /**
+   * Vérifier si un commentaire a déjà été traité
+   */
+  async isCommentProcessed(commentId) {
+    const query = 'SELECT * FROM processed_comments WHERE comment_id = ?';
+
+    return new Promise((resolve, reject) => {
+      this.db.get(query, [commentId], (err, row) => {
+        if (err) {
+          console.error('Erreur lors de la vérification du commentaire:', err);
+          reject(err);
+        } else {
+          resolve(!!row);
         }
       });
     });
