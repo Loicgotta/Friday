@@ -31,19 +31,25 @@ app.use(session({
 // Servir les fichiers statiques
 app.use(express.static('public'));
 
-// Permissions Facebook requises pour l'agent IA
-// Version MINIMALE - Fonctionne en mode Live sans App Review
+// Permissions Facebook et Instagram requises pour l'agent IA
 const FACEBOOK_PERMISSIONS = [
   // Permissions de base (toujours disponibles)
   'public_profile',
 
-  // Gestion des Pages (permissions de base sans App Review)
+  // Gestion des Pages (permissions de base)
   'pages_show_list',
-  'pages_read_engagement'
+  'pages_read_engagement',
+
+  // Instagram Business (pour l'agent IA)
+  'instagram_basic',
+  'instagram_manage_comments',
+  'instagram_manage_messages'
 ].join(',');
 
-// REMARQUE: Pour ajouter ads_management, ads_read, leads_retrieval, etc.
-// vous devez d'abord compléter l'App Review sur Meta for Developers
+// REMARQUE: Ces permissions Instagram nécessitent:
+// 1. Que votre Page Facebook soit connectée à un compte Instagram Business
+// 2. La configuration du Use Case "Manage messaging & content on Instagram"
+// 3. Potentiellement une App Review selon votre statut
 
 /**
  * Route 1: Initier le processus d'authentification Facebook
@@ -114,11 +120,32 @@ app.get('/auth/facebook/callback', async (req, res) => {
     // Récupérer les pages et comptes Instagram de l'utilisateur
     const accountsResponse = await axios.get('https://graph.facebook.com/v18.0/me/accounts', {
       params: {
+        fields: 'id,name,access_token,instagram_business_account',
         access_token: longLivedToken
       }
     });
 
     const pages = accountsResponse.data.data || [];
+
+    // Pour chaque page, récupérer les détails du compte Instagram Business si connecté
+    for (const page of pages) {
+      if (page.instagram_business_account) {
+        try {
+          const igResponse = await axios.get(
+            `https://graph.facebook.com/v18.0/${page.instagram_business_account.id}`,
+            {
+              params: {
+                fields: 'id,username,name,profile_picture_url',
+                access_token: page.access_token
+              }
+            }
+          );
+          page.instagram_account = igResponse.data;
+        } catch (igError) {
+          console.log(`Info: Impossible de récupérer le compte Instagram pour la page ${page.name}`);
+        }
+      }
+    }
 
     // Récupérer les comptes publicitaires (optionnel - nécessite ads_management)
     let adAccounts = [];
