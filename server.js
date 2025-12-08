@@ -38,21 +38,20 @@ const FACEBOOK_PERMISSIONS = [
 
   // Gestion des Pages (permissions de base)
   'pages_show_list',
-  'pages_read_engagement',
+  'pages_read_engagement'
 
-  // Instagram Business - Permissions VALIDES
-  'instagram_basic',                    // ✅ Informations de base Instagram
-  'instagram_manage_comments'           // ✅ Gérer les commentaires Instagram
-
-  // NOTE: 'instagram_manage_messages' N'EXISTE PAS
-  // Pour gérer les messages Instagram, utilisez 'pages_messaging' via Messenger Platform
-  // Mais cela nécessite une App Review. Retiré pour l'instant.
+  // ⚠️ PERMISSIONS INSTAGRAM DÉSACTIVÉES TEMPORAIREMENT
+  // Elles nécessitent une App Review de Meta
+  // Décommentez après l'App Review :
+  // 'instagram_basic',
+  // 'instagram_manage_comments'
 ].join(',');
 
-// REMARQUE: Ces permissions Instagram nécessitent:
-// 1. Que votre Page Facebook soit connectée à un compte Instagram Business
-// 2. La configuration du Use Case "Manage messaging & content on Instagram"
-// 3. App Review pour 'instagram_manage_comments'
+// 📝 POUR ACTIVER INSTAGRAM :
+// 1. Complétez l'App Review sur Meta for Developers
+// 2. Décommentez les permissions ci-dessus
+// 3. Configurez le Use Case "Manage messaging & content on Instagram"
+// 4. Redéployez le code
 
 /**
  * Route 1: Initier le processus d'authentification Facebook
