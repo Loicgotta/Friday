@@ -60,7 +60,15 @@ function loadPages() {
     const pagesList = document.getElementById('pages-list');
 
     if (!currentUser.pages || currentUser.pages.length === 0) {
-        pagesList.innerHTML = '<p>Aucune page disponible. Assurez-vous d\'avoir des pages Facebook connectées.</p>';
+        pagesList.innerHTML = `
+            <p>Aucune page disponible. Assurez-vous d'avoir des pages Facebook connectées.</p>
+            <div class="info-box" style="margin-top: 15px;">
+                <strong>💡 Pour utiliser Instagram:</strong><br>
+                1. Votre compte Instagram doit être un compte Business<br>
+                2. Il doit être lié à une Page Facebook<br>
+                3. Connectez-vous avec Facebook Login (Instagram est inclus automatiquement)
+            </div>
+        `;
         return;
     }
 
@@ -69,12 +77,20 @@ function loadPages() {
     currentUser.pages.forEach(page => {
         const pageCard = document.createElement('div');
         pageCard.className = 'page-card';
+
+        // Vérifier si Instagram est connecté
+        const hasInstagram = page.instagram_account;
+        const instagramInfo = hasInstagram
+            ? `<br><small style="color: #E4405F;">📷 Instagram: @${page.instagram_account.username}</small>`
+            : `<br><small style="color: #999;">📷 Instagram: Non connecté</small>`;
+
         pageCard.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong>${page.name}</strong>
+                    <strong>📘 ${page.name}</strong>
                     <br>
-                    <small style="color: #666;">ID: ${page.id}</small>
+                    <small style="color: #666;">Facebook ID: ${page.id}</small>
+                    ${instagramInfo}
                 </div>
                 <div id="page-status-${page.id}">
                     <span class="status-badge inactive">Non configuré</span>
