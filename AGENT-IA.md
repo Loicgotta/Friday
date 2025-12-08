@@ -42,9 +42,25 @@ Ce système permet à votre agent IA de surveiller et répondre automatiquement 
 1. **Monitoring**: L'agent vérifie les commentaires toutes les 60 secondes
 2. **Détection**: Identifie les nouveaux commentaires non traités
 3. **Délai**: Attend le délai configuré (si défini)
-4. **Génération**: Crée une réponse basée sur votre prompt
+4. **Génération IA**: Utilise OpenAI GPT-4o-mini pour créer une réponse intelligente basée sur votre prompt
 5. **Publication**: Poste la réponse sur Facebook
 6. **Enregistrement**: Marque le commentaire comme traité
+
+### 3. Intelligence Artificielle (OpenAI)
+
+L'agent utilise **OpenAI GPT-4o-mini** pour générer des réponses naturelles et contextuelles :
+
+**🤖 Avantages:**
+- ✅ Réponses **intelligentes** adaptées au contexte du commentaire
+- ✅ Compréhension du **sentiment** et de l'intention
+- ✅ Respect strict de votre **prompt** et du **ton** choisi
+- ✅ Support **multilingue** (Français, English, Español)
+- ✅ Réponses **concises** (2-3 phrases max)
+
+**🔧 Configuration:**
+- Modèle: `gpt-4o-mini` (rapide et économique)
+- Temperature: `0.7` (équilibre créativité/cohérence)
+- Max tokens: `150` (réponses courtes)
 
 ## ⚙️ Configuration de l'agent
 

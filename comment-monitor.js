@@ -1,5 +1,6 @@
 const axios = require('axios');
 const Database = require('./database');
+const OpenAI = require('openai');
 
 class CommentMonitor {
   constructor() {
@@ -7,6 +8,11 @@ class CommentMonitor {
     this.isRunning = false;
     this.checkInterval = 60000; // 1 minute par défaut
     this.intervalId = null;
+
+    // Initialiser OpenAI
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
   }
 
   /**
@@ -206,32 +212,62 @@ class CommentMonitor {
   }
 
   /**
-   * Générer une réponse basée sur le prompt et le commentaire
+   * Générer une réponse basée sur le prompt et le commentaire avec OpenAI
    */
   async generateReply(commentMessage, config) {
-    // Pour l'instant, génération simple basée sur le prompt
-    // Dans une version avancée, on pourrait intégrer une vraie IA (OpenAI, Claude, etc.)
+    try {
+      // Construire le message système basé sur la configuration
+      const toneInstructions = {
+        friendly: 'Sois chaleureux, amical et accueillant.',
+        professional: 'Sois professionnel, courtois et formel.',
+        casual: 'Sois décontracté, relaxé et informel. Tu peux utiliser des emojis occasionnellement.'
+      };
 
-    const templates = {
-      friendly: [
-        `Merci pour votre commentaire ! ${config.prompt}`,
-        `Super ! ${config.prompt}`,
-        `Merci ! ${config.prompt}`
-      ],
-      professional: [
-        `Nous vous remercions pour votre retour. ${config.prompt}`,
-        `Merci pour votre message. ${config.prompt}`
-      ],
-      casual: [
-        `Hey ! Merci pour ton commentaire 😊 ${config.prompt}`,
-        `Cool ! ${config.prompt}`
-      ]
-    };
+      const systemMessage = `${config.prompt}
 
-    const toneTemplates = templates[config.tone] || templates.friendly;
-    const randomTemplate = toneTemplates[Math.floor(Math.random() * toneTemplates.length)];
+Ton: ${toneInstructions[config.tone] || toneInstructions.friendly}
+Langue: ${config.language === 'fr' ? 'Français' : config.language === 'en' ? 'English' : 'Español'}
 
-    return randomTemplate;
+Instructions importantes:
+- Réponds UNIQUEMENT au commentaire, pas d'introduction
+- Sois concis (2-3 phrases maximum)
+- Respecte le ton et le comportement défini
+- Adapte ta réponse au contexte du commentaire`;
+
+      // Appeler OpenAI pour générer la réponse
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini', // Modèle rapide et économique
+        messages: [
+          {
+            role: 'system',
+            content: systemMessage
+          },
+          {
+            role: 'user',
+            content: commentMessage
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 150
+      });
+
+      const reply = completion.choices[0].message.content.trim();
+
+      console.log(`🤖 Réponse OpenAI générée pour: "${commentMessage}"`);
+      return reply;
+
+    } catch (error) {
+      console.error('❌ Erreur OpenAI:', error.message);
+
+      // Fallback: réponse simple en cas d'erreur OpenAI
+      const fallbackMessages = {
+        friendly: `Merci pour votre commentaire ! 😊`,
+        professional: `Nous vous remercions pour votre retour.`,
+        casual: `Hey ! Merci pour ton commentaire 👍`
+      };
+
+      return fallbackMessages[config.tone] || fallbackMessages.friendly;
+    }
   }
 
   /**
