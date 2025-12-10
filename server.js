@@ -33,25 +33,21 @@ app.use(express.static('public'));
 
 // Permissions Facebook et Instagram requises pour l'agent IA
 const FACEBOOK_PERMISSIONS = [
-  // Permissions de base (toujours disponibles)
+  // Permissions de base
   'public_profile',
 
-  // Gestion des Pages (permissions de base)
+  // Gestion des Pages
   'pages_show_list',
-  'pages_read_engagement'
+  'pages_read_engagement',
+  'pages_manage_posts',      // Pour répondre aux commentaires
 
-  // ⚠️ PERMISSIONS INSTAGRAM DÉSACTIVÉES TEMPORAIREMENT
-  // Elles nécessitent une App Review de Meta
-  // Décommentez après l'App Review :
-  // 'instagram_basic',
-  // 'instagram_manage_comments'
+  // Instagram Business
+  'instagram_basic',
+  'instagram_manage_comments'
 ].join(',');
 
-// 📝 POUR ACTIVER INSTAGRAM :
-// 1. Complétez l'App Review sur Meta for Developers
-// 2. Décommentez les permissions ci-dessus
-// 3. Configurez le Use Case "Manage messaging & content on Instagram"
-// 4. Redéployez le code
+// NOTE: Ces permissions peuvent nécessiter une App Review selon votre app
+// En mode Development, elles fonctionnent pour les testeurs ajoutés
 
 /**
  * Route 1: Initier le processus d'authentification Facebook
