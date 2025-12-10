@@ -65,10 +65,17 @@ class CommentMonitor {
         return; // Pas de configuration active
       }
 
-      console.log(`🔍 Vérification des commentaires pour ${activeConfigs.length} page(s)...`);
+      console.log(`🔍 Vérification des commentaires pour ${activeConfigs.length} configuration(s)...`);
 
       for (const config of activeConfigs) {
-        await this.checkPageComments(config);
+        // Vérifier si c'est une page Facebook ou un compte Instagram
+        if (config.page_id.startsWith('ig_')) {
+          // C'est un compte Instagram (on préfixe les IDs Instagram avec 'ig_')
+          await this.checkInstagramComments(config);
+        } else {
+          // C'est une page Facebook
+          await this.checkPageComments(config);
+        }
       }
 
     } catch (error) {
@@ -124,6 +131,131 @@ class CommentMonitor {
 
     } catch (error) {
       console.error(`❌ Erreur pour la page ${config.page_id}:`, error.response?.data || error.message);
+    }
+  }
+
+  /**
+   * Vérifier les commentaires pour un compte Instagram
+   */
+  async checkInstagramComments(config) {
+    try {
+      // Extraire l'ID Instagram réel (enlever le préfixe 'ig_')
+      const instagramId = config.page_id.replace('ig_', '');
+
+      // Récupérer le compte Instagram de la base de données
+      const igAccount = await this.db.getInstagramAccountById(instagramId);
+
+      if (!igAccount) {
+        console.log(`⚠️  Compte Instagram ${instagramId} non trouvé`);
+        return;
+      }
+
+      console.log(`📷 Vérification des commentaires Instagram pour @${igAccount.username}`);
+
+      // Récupérer les posts récents du compte Instagram
+      const mediaResponse = await axios.get(
+        `https://graph.instagram.com/${instagramId}/media`,
+        {
+          params: {
+            fields: 'id,caption,media_type,media_url,timestamp,comments_count',
+            limit: 10, // Les 10 derniers posts
+            access_token: igAccount.access_token
+          }
+        }
+      );
+
+      const mediaPosts = mediaResponse.data.data || [];
+
+      // Pour chaque post, vérifier les nouveaux commentaires
+      for (const media of mediaPosts) {
+        await this.checkInstagramMediaComments(media, config, igAccount.access_token, igAccount.user_id, instagramId);
+      }
+
+    } catch (error) {
+      console.error(`❌ Erreur pour Instagram ${config.page_id}:`, error.response?.data || error.message);
+    }
+  }
+
+  /**
+   * Vérifier les commentaires d'un média Instagram
+   */
+  async checkInstagramMediaComments(media, config, accessToken, userId, instagramId) {
+    try {
+      // Récupérer les commentaires du média
+      const commentsResponse = await axios.get(
+        `https://graph.instagram.com/${media.id}/comments`,
+        {
+          params: {
+            fields: 'id,from,text,timestamp,username',
+            access_token: accessToken
+          }
+        }
+      );
+
+      const comments = commentsResponse.data.data || [];
+
+      for (const comment of comments) {
+        // Vérifier si ce commentaire a déjà été traité
+        const alreadyProcessed = await this.db.isCommentProcessed(comment.id);
+
+        if (!alreadyProcessed && config.auto_reply_enabled) {
+          // Attendre le délai configuré si nécessaire
+          if (config.reply_delay_minutes > 0) {
+            const commentTime = new Date(comment.timestamp);
+            const now = new Date();
+            const minutesSinceComment = (now - commentTime) / 1000 / 60;
+
+            if (minutesSinceComment < config.reply_delay_minutes) {
+              continue; // Pas encore temps de répondre
+            }
+          }
+
+          // Générer et poster la réponse sur Instagram
+          await this.replyToInstagramComment(comment, media, config, accessToken, userId, instagramId);
+        }
+      }
+
+    } catch (error) {
+      console.error(`❌ Erreur pour le média Instagram ${media.id}:`, error.response?.data || error.message);
+    }
+  }
+
+  /**
+   * Répondre à un commentaire Instagram
+   */
+  async replyToInstagramComment(comment, media, config, accessToken, userId, instagramId) {
+    try {
+      // Générer la réponse basée sur le prompt configuré
+      const replyText = await this.generateReply(comment.text, config);
+
+      // Poster la réponse sur Instagram
+      const response = await axios.post(
+        `https://graph.instagram.com/${media.id}/comments`,
+        {
+          message: replyText
+        },
+        {
+          params: {
+            access_token: accessToken
+          }
+        }
+      );
+
+      // Marquer le commentaire comme traité
+      await this.db.markCommentAsProcessed(
+        comment.id,
+        media.id,
+        `ig_${instagramId}`,
+        userId,
+        replyText
+      );
+
+      console.log(`✅ Réponse postée sur Instagram - commentaire ${comment.id}`);
+      console.log(`   Commentaire: "${comment.text}" par @${comment.username}`);
+      console.log(`   Réponse: "${replyText}"`);
+
+    } catch (error) {
+      console.error(`❌ Erreur lors de la réponse au commentaire Instagram ${comment.id}:`, error.response?.data || error.message);
     }
   }
 
@@ -218,21 +350,47 @@ class CommentMonitor {
     try {
       // Construire le message système basé sur la configuration
       const toneInstructions = {
-        friendly: 'Sois chaleureux, amical et accueillant.',
-        professional: 'Sois professionnel, courtois et formel.',
-        casual: 'Sois décontracté, relaxé et informel. Tu peux utiliser des emojis occasionnellement.'
+        friendly: 'Sois chaleureux, amical et accueillant. Utilise un ton bienveillant qui met les gens à l\'aise.',
+        professional: 'Sois professionnel, courtois et formel. Maintiens un niveau d\'expertise élevé.',
+        casual: 'Sois décontracté, relaxé et informel. Tu peux utiliser des emojis occasionnellement.',
+        motivating: 'Sois enthousiaste, encourageant et motivant. Inspire l\'action et la confiance.'
       };
 
-      const systemMessage = `${config.prompt}
+      // Prompt système par défaut si pas de prompt personnalisé
+      const defaultPrompt = `Tu es un assistant IA professionnel et motivant qui répond aux commentaires sur les réseaux sociaux.
 
-Ton: ${toneInstructions[config.tone] || toneInstructions.friendly}
+Ton rôle est de:
+✅ Accueillir chaleureusement les personnes qui commentent
+✅ Répondre de manière pertinente et personnalisée à leur commentaire
+✅ Être motivant et enthousiaste dans tes réponses
+✅ Inciter subtilement les gens à s'intéresser à la solution ou au produit proposé
+✅ Créer de l'engagement et encourager la discussion
+✅ Montrer de l'empathie et de la compréhension
+
+Principes clés:
+- Sois authentique et humain dans tes interactions
+- Adapte ton langage au contexte du commentaire
+- Valorise les questions et remarques positives
+- Réponds avec tact aux commentaires critiques
+- Crée un sentiment de communauté et d'appartenance
+- Encourage les gens à en savoir plus sans être insistant`;
+
+      const finalPrompt = config.prompt && config.prompt.trim() !== '' ? config.prompt : defaultPrompt;
+
+      const systemMessage = `${finalPrompt}
+
+Ton: ${toneInstructions[config.tone] || toneInstructions.motivating}
 Langue: ${config.language === 'fr' ? 'Français' : config.language === 'en' ? 'English' : 'Español'}
 
 Instructions importantes:
-- Réponds UNIQUEMENT au commentaire, pas d'introduction
-- Sois concis (2-3 phrases maximum)
-- Respecte le ton et le comportement défini
-- Adapte ta réponse au contexte du commentaire`;
+- Réponds UNIQUEMENT au commentaire, pas d'introduction ou de signature
+- Sois concis (2-3 phrases maximum, parfois une seule suffit)
+- Respecte strictement le ton et le comportement défini
+- Adapte ta réponse au contexte spécifique du commentaire
+- Si le commentaire est une question, réponds-y directement
+- Si c'est un compliment, remercie et engage la conversation
+- Évite les réponses génériques, personnalise chaque réponse
+- N'utilise PAS de formules de politesse formelles si le ton est casual`;
 
       // Appeler OpenAI pour générer la réponse
       const completion = await this.openai.chat.completions.create({

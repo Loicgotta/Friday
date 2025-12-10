@@ -245,9 +245,17 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="prompt">Prompt de l'agent (Comportement et ton)</label>
-                            <textarea id="prompt" placeholder="Exemple: Je suis un assistant sympathique qui répond aux questions sur nos produits. Je reste professionnel et courtois."></textarea>
-                            <small style="color: #666;">Décrivez le comportement et le ton que l'agent doit adopter dans ses réponses</small>
+                            <label for="prompt">
+                                🤖 Système Prompt de l'agent (Personnalisez le comportement)
+                                <button type="button" onclick="showDefaultPrompt()" style="margin-left: 10px; padding: 5px 10px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 0.85em;">
+                                    Afficher le prompt par défaut
+                                </button>
+                            </label>
+                            <textarea id="prompt" style="min-height: 250px; font-family: 'Courier New', monospace; font-size: 0.9em;" placeholder="Laissez vide pour utiliser le prompt par défaut motivant et professionnel, ou personnalisez-le ici..."></textarea>
+                            <small style="color: #666;">
+                                <strong>Conseil:</strong> Décrivez précisément comment l'agent doit se comporter, ce qu'il représente, et comment il doit répondre.
+                                Un prompt bien défini améliore considérablement la qualité des réponses.
+                            </small>
                         </div>
 
                         <div class="form-group">
@@ -256,6 +264,7 @@
                                 <option value="friendly">Amical</option>
                                 <option value="professional">Professionnel</option>
                                 <option value="casual">Décontracté</option>
+                                <option value="motivating">Motivant et Enthousiaste</option>
                             </select>
                         </div>
 
