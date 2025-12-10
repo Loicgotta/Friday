@@ -115,6 +115,26 @@ app.get('/auth/facebook/callback', async (req, res) => {
 
     const userData = userResponse.data;
 
+    // 🐛 DEBUG: Vérifier les permissions accordées
+    console.log('=== DEBUG USER ===');
+    console.log(`User connecté: ${userData.name} (ID: ${userData.id})`);
+    try {
+      const permissionsResponse = await axios.get('https://graph.facebook.com/v18.0/me/permissions', {
+        params: { access_token: longLivedToken }
+      });
+      console.log('Permissions accordées:');
+      permissionsResponse.data.data.forEach(perm => {
+        if (perm.status === 'granted') {
+          console.log(`  ✅ ${perm.permission}`);
+        } else {
+          console.log(`  ❌ ${perm.permission} (${perm.status})`);
+        }
+      });
+    } catch (err) {
+      console.log('Erreur lors de la récupération des permissions:', err.message);
+    }
+    console.log('==================');
+
     // Récupérer les pages et comptes Instagram de l'utilisateur
     const accountsResponse = await axios.get('https://graph.facebook.com/v18.0/me/accounts', {
       params: {
@@ -128,11 +148,23 @@ app.get('/auth/facebook/callback', async (req, res) => {
     // 🐛 DEBUG: Log ce que l'API retourne
     console.log('=== DEBUG PAGES ===');
     console.log(`Nombre de pages trouvées: ${pages.length}`);
+
+    if (pages.length === 0) {
+      console.log('⚠️ AUCUNE PAGE TROUVÉE !');
+      console.log('Raisons possibles:');
+      console.log('  1. Le compte n\'a pas de Pages Facebook');
+      console.log('  2. Le compte n\'est pas admin/éditeur des Pages');
+      console.log('  3. Le compte n\'a pas le rôle Testeur/Développeur dans l\'app Facebook (mode Dev)');
+      console.log('  4. Les permissions pages_show_list ne sont pas accordées');
+    }
+
     pages.forEach(page => {
-      console.log(`Page: ${page.name} (ID: ${page.id})`);
+      console.log(`\nPage: ${page.name} (ID: ${page.id})`);
       console.log(`  - A instagram_business_account: ${!!page.instagram_business_account}`);
       if (page.instagram_business_account) {
         console.log(`  - Instagram ID: ${page.instagram_business_account.id}`);
+      } else {
+        console.log(`  ⚠️ Cette page n'a PAS de compte Instagram lié`);
       }
     });
     console.log('==================');
