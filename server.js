@@ -125,6 +125,18 @@ app.get('/auth/facebook/callback', async (req, res) => {
 
     const pages = accountsResponse.data.data || [];
 
+    // 🐛 DEBUG: Log ce que l'API retourne
+    console.log('=== DEBUG PAGES ===');
+    console.log(`Nombre de pages trouvées: ${pages.length}`);
+    pages.forEach(page => {
+      console.log(`Page: ${page.name} (ID: ${page.id})`);
+      console.log(`  - A instagram_business_account: ${!!page.instagram_business_account}`);
+      if (page.instagram_business_account) {
+        console.log(`  - Instagram ID: ${page.instagram_business_account.id}`);
+      }
+    });
+    console.log('==================');
+
     // Pour chaque page, récupérer les détails du compte Instagram Business si connecté
     for (const page of pages) {
       if (page.instagram_business_account) {
@@ -139,8 +151,9 @@ app.get('/auth/facebook/callback', async (req, res) => {
             }
           );
           page.instagram_account = igResponse.data;
+          console.log(`✅ Instagram récupéré: @${igResponse.data.username}`);
         } catch (igError) {
-          console.log(`Info: Impossible de récupérer le compte Instagram pour la page ${page.name}`);
+          console.log(`⚠️ Erreur Instagram pour page ${page.name}:`, igError.response?.data || igError.message);
         }
       }
     }
