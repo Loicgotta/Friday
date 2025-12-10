@@ -610,6 +610,83 @@ app.get('/debug', (req, res) => {
         `}
       </div>
 
+      <div class="section">
+        <h2>➕ Ajouter un compte Instagram manuellement</h2>
+        <p style="color: #666; margin-bottom: 15px;">
+          Si vos Pages Facebook ne sont pas détectées ou si vous avez un token d'accès Instagram direct,
+          vous pouvez ajouter votre compte Instagram manuellement ici.
+        </p>
+
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+          <label for="instagram-token" style="display: block; font-weight: 600; margin-bottom: 8px;">
+            Token d'accès Instagram (commence par IGAA...):
+          </label>
+          <input
+            type="text"
+            id="instagram-token"
+            placeholder="IGAAf0sbYu5bhBZAFlzUFJvSUFRRXIzSzBIUWFlMF..."
+            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-family: monospace; font-size: 0.9em;"
+          >
+        </div>
+
+        <button onclick="addInstagramAccount()" class="btn btn-primary" style="background: #E4405F;">
+          📷 Ajouter le compte Instagram
+        </button>
+
+        <div id="instagram-result" style="margin-top: 15px;"></div>
+
+        <script>
+          async function addInstagramAccount() {
+            const token = document.getElementById('instagram-token').value.trim();
+            const resultDiv = document.getElementById('instagram-result');
+
+            if (!token) {
+              resultDiv.innerHTML = '<p style="color: #c33; padding: 10px; background: #fee; border-radius: 5px;">⚠️ Veuillez entrer un token d\\'accès Instagram</p>';
+              return;
+            }
+
+            resultDiv.innerHTML = '<p style="color: #666;">⏳ Vérification du token en cours...</p>';
+
+            try {
+              const response = await fetch('/api/instagram/add', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ access_token: token }),
+                credentials: 'include'
+              });
+
+              const data = await response.json();
+
+              if (response.ok) {
+                resultDiv.innerHTML = \`
+                  <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; border: 1px solid #c3e6cb;">
+                    <h4 style="margin: 0 0 10px 0;">✅ Compte ajouté avec succès !</h4>
+                    <p style="margin: 5px 0;"><strong>Username:</strong> @\${data.account.username}</p>
+                    <p style="margin: 5px 0;"><strong>Nom:</strong> \${data.account.name}</p>
+                    <p style="margin: 5px 0;"><strong>ID:</strong> \${data.account.id}</p>
+                    <button onclick="location.reload()" class="btn btn-secondary" style="margin-top: 10px;">🔄 Rafraîchir la page</button>
+                  </div>
+                \`;
+                document.getElementById('instagram-token').value = '';
+              } else {
+                resultDiv.innerHTML = \`
+                  <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; border: 1px solid #f5c6cb;">
+                    <h4 style="margin: 0 0 10px 0;">❌ Erreur</h4>
+                    <p style="margin: 0;">\${data.error}</p>
+                    \${data.details ? \`<p style="margin: 5px 0 0 0; font-size: 0.9em;">\${data.details}</p>\` : ''}
+                  </div>
+                \`;
+              }
+            } catch (error) {
+              console.error('Erreur:', error);
+              resultDiv.innerHTML = '<p style="color: #c33; padding: 10px; background: #fee; border-radius: 5px;">❌ Erreur lors de l\\'ajout du compte</p>';
+            }
+          }
+        </script>
+      </div>
+
       <div class="actions">
         <a href="/" class="btn btn-primary">Retour à l'accueil</a>
         <a href="/auth/logout" class="btn btn-secondary">Se déconnecter</a>
@@ -633,7 +710,119 @@ app.get('/auth/logout', (req, res) => {
 });
 
 /**
- * Route 7: Vérifier le statut de connexion
+ * Route 7: Ajouter un compte Instagram manuellement via token
+ */
+app.post('/api/instagram/add', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  const { access_token } = req.body;
+
+  if (!access_token) {
+    return res.status(400).json({ error: 'Token d\'accès requis' });
+  }
+
+  try {
+    // Valider le token et récupérer les infos du compte Instagram
+    const igResponse = await axios.get('https://graph.instagram.com/me', {
+      params: {
+        fields: 'id,username,name,profile_picture_url',
+        access_token: access_token
+      }
+    });
+
+    const igAccount = igResponse.data;
+
+    // Vérifier l'expiration du token (60 jours par défaut pour les long-lived tokens)
+    const tokenExpiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000); // 60 jours
+
+    // Sauvegarder le compte Instagram dans la base de données
+    await db.saveInstagramAccount({
+      user_id: req.session.userId,
+      instagram_id: igAccount.id,
+      username: igAccount.username,
+      name: igAccount.name || igAccount.username,
+      access_token: access_token,
+      token_expires_at: tokenExpiresAt.toISOString(),
+      profile_picture_url: igAccount.profile_picture_url || null
+    });
+
+    // Mettre à jour les infos de debug dans la session
+    if (!req.session.debugInfo) {
+      req.session.debugInfo = { pages: [] };
+    }
+
+    // Ajouter le compte Instagram aux pages (simuler une "page" Instagram)
+    req.session.debugInfo.pages.push({
+      id: igAccount.id,
+      name: `Instagram: @${igAccount.username}`,
+      hasInstagram: true,
+      instagramId: igAccount.id,
+      instagramUsername: igAccount.username
+    });
+
+    res.json({
+      success: true,
+      message: `Compte Instagram @${igAccount.username} ajouté avec succès`,
+      account: {
+        id: igAccount.id,
+        username: igAccount.username,
+        name: igAccount.name,
+        profile_picture_url: igAccount.profile_picture_url
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de l\'ajout du compte Instagram:', error.response?.data || error.message);
+
+    if (error.response?.data?.error?.message) {
+      return res.status(400).json({
+        error: 'Token invalide ou expiré',
+        details: error.response.data.error.message
+      });
+    }
+
+    res.status(500).json({ error: 'Erreur lors de l\'ajout du compte Instagram' });
+  }
+});
+
+/**
+ * Route 8: Récupérer les comptes Instagram de l'utilisateur
+ */
+app.get('/api/instagram/accounts', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    const accounts = await db.getInstagramAccountsByUserId(req.session.userId);
+    res.json({ accounts });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des comptes Instagram:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Route 9: Supprimer un compte Instagram
+ */
+app.delete('/api/instagram/:instagramId', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    await db.deleteInstagramAccount(req.session.userId, req.params.instagramId);
+    res.json({ success: true, message: 'Compte Instagram supprimé' });
+  } catch (error) {
+    console.error('Erreur lors de la suppression du compte Instagram:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Route 10: Vérifier le statut de connexion
  */
 app.get('/api/status', (req, res) => {
   if (req.session.userId) {

@@ -77,6 +77,23 @@ class Database {
       )
     `;
 
+    const createInstagramAccountsTable = `
+      CREATE TABLE IF NOT EXISTS instagram_accounts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        instagram_id TEXT NOT NULL,
+        username TEXT NOT NULL,
+        name TEXT,
+        access_token TEXT NOT NULL,
+        token_expires_at TEXT,
+        profile_picture_url TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        UNIQUE(user_id, instagram_id)
+      )
+    `;
+
     return new Promise((resolve, reject) => {
       this.db.serialize(() => {
         this.db.run(createUsersTable, (err) => {
@@ -101,6 +118,14 @@ class Database {
             return reject(err);
           }
           console.log('✅ Table processed_comments créée/vérifiée');
+        });
+
+        this.db.run(createInstagramAccountsTable, (err) => {
+          if (err) {
+            console.error('Erreur lors de la création de la table instagram_accounts:', err);
+            return reject(err);
+          }
+          console.log('✅ Table instagram_accounts créée/vérifiée');
           resolve();
         });
       });
@@ -362,6 +387,104 @@ class Database {
           reject(err);
         } else {
           resolve(!!row);
+        }
+      });
+    });
+  }
+
+  /**
+   * Sauvegarder ou mettre à jour un compte Instagram
+   */
+  async saveInstagramAccount(accountData) {
+    const {
+      user_id,
+      instagram_id,
+      username,
+      name,
+      access_token,
+      token_expires_at,
+      profile_picture_url
+    } = accountData;
+
+    const query = `
+      INSERT INTO instagram_accounts (user_id, instagram_id, username, name, access_token, token_expires_at, profile_picture_url, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id, instagram_id) DO UPDATE SET
+        username = excluded.username,
+        name = excluded.name,
+        access_token = excluded.access_token,
+        token_expires_at = excluded.token_expires_at,
+        profile_picture_url = excluded.profile_picture_url,
+        updated_at = CURRENT_TIMESTAMP
+    `;
+
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        query,
+        [user_id, instagram_id, username, name, access_token, token_expires_at, profile_picture_url],
+        function(err) {
+          if (err) {
+            console.error('Erreur lors de la sauvegarde du compte Instagram:', err);
+            reject(err);
+          } else {
+            console.log(`✅ Compte Instagram @${username} sauvegardé`);
+            resolve(this.lastID);
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * Récupérer tous les comptes Instagram d'un utilisateur
+   */
+  async getInstagramAccountsByUserId(userId) {
+    const query = 'SELECT * FROM instagram_accounts WHERE user_id = ?';
+
+    return new Promise((resolve, reject) => {
+      this.db.all(query, [userId], (err, rows) => {
+        if (err) {
+          console.error('Erreur lors de la récupération des comptes Instagram:', err);
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
+  }
+
+  /**
+   * Récupérer un compte Instagram par son ID
+   */
+  async getInstagramAccountById(instagramId) {
+    const query = 'SELECT * FROM instagram_accounts WHERE instagram_id = ?';
+
+    return new Promise((resolve, reject) => {
+      this.db.get(query, [instagramId], (err, row) => {
+        if (err) {
+          console.error('Erreur lors de la récupération du compte Instagram:', err);
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  /**
+   * Supprimer un compte Instagram
+   */
+  async deleteInstagramAccount(userId, instagramId) {
+    const query = 'DELETE FROM instagram_accounts WHERE user_id = ? AND instagram_id = ?';
+
+    return new Promise((resolve, reject) => {
+      this.db.run(query, [userId, instagramId], function(err) {
+        if (err) {
+          console.error('Erreur lors de la suppression du compte Instagram:', err);
+          reject(err);
+        } else {
+          console.log(`✅ Compte Instagram supprimé`);
+          resolve(this.changes);
         }
       });
     });
