@@ -216,6 +216,24 @@ app.get('/auth/facebook/callback', async (req, res) => {
       .filter(p => p.status === 'granted')
       .map(p => p.permission);
 
+    // 🐛 DEBUG: Stocker les infos de debug dans la session pour affichage
+    req.session.debugInfo = {
+      user: {
+        id: userData.id,
+        name: userData.name,
+        email: userData.email
+      },
+      permissions: permissionsResponse.data.data,
+      pages: pages.map(p => ({
+        id: p.id,
+        name: p.name,
+        hasInstagram: !!p.instagram_business_account,
+        instagramId: p.instagram_business_account?.id,
+        instagramUsername: p.instagram_account?.username
+      })),
+      timestamp: new Date().toISOString()
+    };
+
     // Sauvegarder dans la base de données
     const expiresAt = new Date(Date.now() + longLivedExpiresIn * 1000);
 
@@ -331,6 +349,279 @@ app.post('/api/revoke', async (req, res) => {
     console.error('Erreur lors de la révocation:', error);
     res.status(500).json({ error: 'Erreur lors de la révocation' });
   }
+});
+
+// Route de debug pour afficher les informations de connexion
+app.get('/debug', (req, res) => {
+  if (!req.session.userId) {
+    return res.send(`
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Debug - Non connecté</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+          }
+          .error {
+            background: #fee;
+            border: 2px solid #c33;
+            padding: 20px;
+            border-radius: 8px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="error">
+          <h1>❌ Non connecté</h1>
+          <p>Vous devez d'abord vous connecter avec Facebook.</p>
+          <a href="/" style="display: inline-block; margin-top: 10px; padding: 10px 20px; background: #1877f2; color: white; text-decoration: none; border-radius: 5px;">Retour à l'accueil</a>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+
+  const debug = req.session.debugInfo || {};
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Debug OAuth Facebook</title>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          max-width: 1000px;
+          margin: 20px auto;
+          padding: 20px;
+          background: #f5f5f5;
+        }
+        h1 {
+          color: #1877f2;
+          border-bottom: 3px solid #1877f2;
+          padding-bottom: 10px;
+        }
+        .section {
+          background: white;
+          padding: 20px;
+          margin: 20px 0;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+          margin-top: 0;
+          color: #333;
+          font-size: 1.3em;
+        }
+        .info {
+          display: grid;
+          gap: 10px;
+        }
+        .info-row {
+          display: grid;
+          grid-template-columns: 200px 1fr;
+          padding: 8px;
+          background: #f8f9fa;
+          border-radius: 4px;
+        }
+        .info-label {
+          font-weight: 600;
+          color: #555;
+        }
+        .info-value {
+          color: #333;
+          word-break: break-all;
+        }
+        .permission {
+          padding: 8px 12px;
+          margin: 5px;
+          border-radius: 5px;
+          display: inline-block;
+          font-size: 0.9em;
+        }
+        .granted {
+          background: #d4edda;
+          color: #155724;
+          border: 1px solid #c3e6cb;
+        }
+        .declined {
+          background: #f8d7da;
+          color: #721c24;
+          border: 1px solid #f5c6cb;
+        }
+        .page-card {
+          background: #f8f9fa;
+          padding: 15px;
+          margin: 10px 0;
+          border-radius: 8px;
+          border-left: 4px solid #1877f2;
+        }
+        .page-card.has-instagram {
+          border-left-color: #E4405F;
+        }
+        .status-badge {
+          display: inline-block;
+          padding: 4px 12px;
+          border-radius: 12px;
+          font-size: 0.85em;
+          font-weight: 600;
+        }
+        .status-success {
+          background: #d4edda;
+          color: #155724;
+        }
+        .status-warning {
+          background: #fff3cd;
+          color: #856404;
+        }
+        .status-error {
+          background: #f8d7da;
+          color: #721c24;
+        }
+        .actions {
+          margin-top: 20px;
+          display: flex;
+          gap: 10px;
+        }
+        .btn {
+          padding: 10px 20px;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          text-decoration: none;
+          display: inline-block;
+          font-size: 1em;
+        }
+        .btn-primary {
+          background: #1877f2;
+          color: white;
+        }
+        .btn-secondary {
+          background: #6c757d;
+          color: white;
+        }
+        .timestamp {
+          color: #999;
+          font-size: 0.85em;
+          margin-top: 20px;
+          text-align: center;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>🐛 Debug OAuth Facebook</h1>
+
+      <div class="section">
+        <h2>👤 Informations Utilisateur</h2>
+        <div class="info">
+          <div class="info-row">
+            <span class="info-label">Nom:</span>
+            <span class="info-value">${debug.user?.name || 'N/A'}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Facebook ID:</span>
+            <span class="info-value">${debug.user?.id || 'N/A'}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Email:</span>
+            <span class="info-value">${debug.user?.email || 'N/A'}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>🔐 Permissions Accordées</h2>
+        ${debug.permissions && debug.permissions.length > 0 ? `
+          <div>
+            ${debug.permissions.map(perm => `
+              <span class="permission ${perm.status === 'granted' ? 'granted' : 'declined'}">
+                ${perm.status === 'granted' ? '✅' : '❌'} ${perm.permission}
+              </span>
+            `).join('')}
+          </div>
+        ` : '<p>Aucune permission trouvée</p>'}
+
+        <div style="margin-top: 15px;">
+          <strong>Permissions requises pour l'agent:</strong>
+          <ul style="margin: 10px 0; color: #666;">
+            <li>pages_show_list - Pour lister vos Pages</li>
+            <li>pages_read_engagement - Pour lire les commentaires</li>
+            <li>pages_manage_posts - Pour répondre aux commentaires</li>
+            <li>instagram_basic - Pour accéder aux infos Instagram</li>
+            <li>instagram_manage_comments - Pour gérer les commentaires Instagram</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>📄 Pages Facebook & Instagram</h2>
+        ${debug.pages && debug.pages.length > 0 ? `
+          <p><span class="status-badge status-success">${debug.pages.length} page(s) trouvée(s)</span></p>
+          ${debug.pages.map(page => `
+            <div class="page-card ${page.hasInstagram ? 'has-instagram' : ''}">
+              <h3 style="margin: 0 0 10px 0;">📘 ${page.name}</h3>
+              <div class="info-row">
+                <span class="info-label">Facebook ID:</span>
+                <span class="info-value">${page.id}</span>
+              </div>
+              ${page.hasInstagram ? `
+                <div class="info-row" style="margin-top: 5px;">
+                  <span class="info-label">Instagram:</span>
+                  <span class="info-value">
+                    <span class="status-badge status-success">✅ Connecté</span>
+                    ${page.instagramUsername ? `@${page.instagramUsername}` : `ID: ${page.instagramId}`}
+                  </span>
+                </div>
+              ` : `
+                <div class="info-row" style="margin-top: 5px;">
+                  <span class="info-label">Instagram:</span>
+                  <span class="info-value">
+                    <span class="status-badge status-warning">⚠️ Pas de compte Instagram lié à cette Page</span>
+                  </span>
+                </div>
+              `}
+            </div>
+          `).join('')}
+        ` : `
+          <p><span class="status-badge status-error">❌ Aucune page trouvée</span></p>
+          <div style="margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 5px;">
+            <strong>⚠️ Raisons possibles:</strong>
+            <ol style="margin: 10px 0; color: #856404;">
+              <li>Vous n'avez pas de Pages Facebook</li>
+              <li>Vous n'êtes pas Administrateur/Éditeur de la Page</li>
+              <li><strong>Votre compte n'a pas le rôle Testeur/Développeur dans l'app Facebook</strong> (cause la plus fréquente en mode Développement)</li>
+              <li>La permission <code>pages_show_list</code> n'a pas été accordée</li>
+            </ol>
+            <p style="margin-top: 15px; color: #856404;">
+              <strong>Solution:</strong> Allez sur
+              <a href="https://developers.facebook.com/apps/1364606882072627/roles/roles/" target="_blank">Meta for Developers - Rôles</a>
+              et ajoutez votre compte comme <strong>Testeur</strong> minimum.
+            </p>
+          </div>
+        `}
+      </div>
+
+      <div class="actions">
+        <a href="/" class="btn btn-primary">Retour à l'accueil</a>
+        <a href="/auth/logout" class="btn btn-secondary">Se déconnecter</a>
+        <button onclick="location.reload()" class="btn btn-secondary">Rafraîchir</button>
+      </div>
+
+      <div class="timestamp">
+        Dernière connexion: ${debug.timestamp ? new Date(debug.timestamp).toLocaleString('fr-FR') : 'N/A'}
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 /**
