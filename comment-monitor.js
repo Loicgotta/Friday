@@ -499,54 +499,47 @@ C'est la 1ère équipe ivoirienne entièrement composée d'employés IA et ils s
 
       const finalPrompt = config.prompt && config.prompt.trim() !== '' ? config.prompt : defaultPrompt;
 
-      const systemMessage = `${finalPrompt}
+      // Log pour debug
+      console.log(`📝 Commentaire reçu: "${commentMessage}"`);
 
-⸻
-
-CONTEXTE DU COMMENTAIRE À ANALYSER :
-Le commentaire suivant vient d'un utilisateur sur les réseaux sociaux. Tu dois l'analyser et y répondre de manière appropriée selon les instructions ci-dessus.
+      // Appeler OpenAI pour générer la réponse
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini', // Modèle corrigé - gpt-4.1-mini n'existe pas !
+        messages: [
+          {
+            role: 'system',
+            content: `${finalPrompt}
 
 Ton: ${toneInstructions[config.tone] || toneInstructions.motivating}
 Langue: ${config.language === 'fr' ? 'Français' : config.language === 'en' ? 'English' : 'Español'}
 
-⸻
-
-CONSIGNES STRICTES :
-1. LIS ATTENTIVEMENT le commentaire
-2. IDENTIFIE le type de commentaire (enthousiaste, question, sceptique, confus, compliment, troll)
-3. APPLIQUE la stratégie correspondante définie ci-dessus
-4. PERSONNALISE ta réponse selon le contenu précis du commentaire
-5. NE réponds JAMAIS de manière générique type "Merci pour votre commentaire"
-6. VARIE tes réponses - chaque commentaire mérite une réponse unique
-7. Sois concis : 1 à 3 phrases maximum
-8. PAS de signature, PAS de "Cordialement", juste la réponse directe
-
-⸻
-
-Maintenant, réponds au commentaire suivant :`;
-
-      // Appeler OpenAI pour générer la réponse
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4.1-mini', // GPT-4.1 mini
-        messages: [
-          {
-            role: 'system',
-            content: systemMessage
+INSTRUCTIONS CRITIQUES :
+- LIS LE COMMENTAIRE CI-DESSOUS ATTENTIVEMENT
+- IDENTIFIE son type et réponds selon la stratégie appropriée
+- PERSONNALISE ta réponse selon son contenu EXACT
+- NE RÉPONDS JAMAIS "Merci pour votre commentaire" de façon générique
+- Chaque commentaire est DIFFÉRENT, ta réponse doit être UNIQUE
+- 1 à 3 phrases max, pas de signature`
           },
           {
             role: 'user',
-            content: commentMessage
+            content: `Voici le commentaire auquel tu dois répondre en tant que Friday Community Manager :
+
+"${commentMessage}"
+
+Analyse ce commentaire et réponds de manière personnalisée et pertinente.`
           }
         ],
-        temperature: 0.8, // Augmenté pour plus de créativité et éviter les réponses génériques
-        max_tokens: 200, // Augmenté pour permettre des réponses complètes
-        presence_penalty: 0.6, // Encourage la diversité des réponses
-        frequency_penalty: 0.3 // Réduit les répétitions
+        temperature: 0.9, // Augmenté pour maximum de créativité
+        max_tokens: 200,
+        presence_penalty: 0.7, // Augmenté pour forcer la diversité
+        frequency_penalty: 0.5 // Augmenté pour éviter les répétitions
       });
 
       const reply = completion.choices[0].message.content.trim();
 
-      console.log(`🤖 Réponse OpenAI générée pour: "${commentMessage}"`);
+      console.log(`📝 Commentaire analysé: "${commentMessage}"`);
+      console.log(`💬 Réponse générée: "${reply}"`);
       return reply;
 
     } catch (error) {
