@@ -9,10 +9,21 @@ class CommentMonitor {
     this.checkInterval = 60000; // 1 minute par défaut
     this.intervalId = null;
 
+    // Valider la présence de la clé OpenAI
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('❌ ERREUR CRITIQUE: OPENAI_API_KEY n\'est pas définie');
+      console.error('💡 Solution: Ajoutez OPENAI_API_KEY dans vos variables d\'environnement');
+      console.error('   - Sur Render: Dashboard > Environment > Add Environment Variable');
+      console.error('   - Localement: fichier .env ou export OPENAI_API_KEY=sk-...');
+      throw new Error('OPENAI_API_KEY manquante - L\'agent IA ne peut pas fonctionner sans clé OpenAI');
+    }
+
     // Initialiser OpenAI
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY
     });
+
+    console.log('✅ Client OpenAI initialisé avec succès');
   }
 
   /**
