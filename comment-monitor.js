@@ -543,16 +543,14 @@ Analyse ce commentaire et réponds de manière personnalisée et pertinente.`
       return reply;
 
     } catch (error) {
-      console.error('❌ Erreur OpenAI:', error.message);
+      console.error('❌ ERREUR OPENAI CRITIQUE ❌');
+      console.error('Message d\'erreur:', error.message);
+      console.error('Stack:', error.stack);
+      console.error('Response:', error.response?.data);
 
-      // Fallback: réponse simple en cas d'erreur OpenAI
-      const fallbackMessages = {
-        friendly: `Merci pour votre commentaire ! 😊`,
-        professional: `Nous vous remercions pour votre retour.`,
-        casual: `Hey ! Merci pour ton commentaire 👍`
-      };
-
-      return fallbackMessages[config.tone] || fallbackMessages.friendly;
+      // Si OpenAI échoue, on LÈVE une exception au lieu d'utiliser un fallback générique
+      // Cela permet de détecter le problème rapidement
+      throw new Error(`Erreur OpenAI: ${error.message}. Le commentaire ne peut pas être traité automatiquement.`);
     }
   }
 
