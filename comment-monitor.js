@@ -181,6 +181,19 @@ class CommentMonitor {
    */
   async checkInstagramMediaComments(media, config, accessToken, userId, instagramId) {
     try {
+      // Récupérer d'abord les infos du compte Instagram pour éviter de répondre à nos propres commentaires
+      const accountInfo = await axios.get(
+        `https://graph.instagram.com/${instagramId}`,
+        {
+          params: {
+            fields: 'username',
+            access_token: accessToken
+          }
+        }
+      );
+
+      const ourUsername = accountInfo.data.username;
+
       // Récupérer les commentaires du média
       const commentsResponse = await axios.get(
         `https://graph.instagram.com/${media.id}/comments`,
@@ -195,6 +208,12 @@ class CommentMonitor {
       const comments = commentsResponse.data.data || [];
 
       for (const comment of comments) {
+        // ⚠️ IMPORTANT: Ne JAMAIS répondre à nos propres commentaires
+        if (comment.username === ourUsername) {
+          console.log(`⏭️  Ignorer notre propre commentaire: "${comment.text}"`);
+          continue;
+        }
+
         // Vérifier si ce commentaire a déjà été traité
         const alreadyProcessed = await this.db.isCommentProcessed(comment.id);
 
@@ -209,6 +228,15 @@ class CommentMonitor {
               continue; // Pas encore temps de répondre
             }
           }
+
+          // Marquer IMMÉDIATEMENT comme traité pour éviter les doublons (avant de poster)
+          await this.db.markCommentAsProcessed(
+            comment.id,
+            media.id,
+            `ig_${instagramId}`,
+            userId,
+            '[En cours de traitement...]'
+          );
 
           // Générer et poster la réponse sur Instagram
           await this.replyToInstagramComment(comment, media, config, accessToken, userId, instagramId);
@@ -279,6 +307,12 @@ class CommentMonitor {
       const comments = commentsResponse.data.data || [];
 
       for (const comment of comments) {
+        // ⚠️ IMPORTANT: Ne JAMAIS répondre à nos propres commentaires (commentaires de la Page)
+        if (comment.from && comment.from.id === config.page_id) {
+          console.log(`⏭️  Ignorer notre propre commentaire: "${comment.message}"`);
+          continue;
+        }
+
         // Vérifier si ce commentaire a déjà été traité
         const alreadyProcessed = await this.db.isCommentProcessed(comment.id);
 
@@ -293,6 +327,15 @@ class CommentMonitor {
               continue; // Pas encore temps de répondre
             }
           }
+
+          // Marquer IMMÉDIATEMENT comme traité pour éviter les doublons (avant de poster)
+          await this.db.markCommentAsProcessed(
+            comment.id,
+            post.id,
+            config.page_id,
+            userId,
+            '[En cours de traitement...]'
+          );
 
           // Générer et poster la réponse
           await this.replyToComment(comment, post, config, pageAccessToken, userId);
@@ -394,7 +437,7 @@ Instructions importantes:
 
       // Appeler OpenAI pour générer la réponse
       const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini', // Modèle rapide et économique
+        model: 'gpt-4o', // GPT-4 Omni - Meilleur modèle pour des réponses intelligentes et contextuelles
         messages: [
           {
             role: 'system',
@@ -406,7 +449,7 @@ Instructions importantes:
           }
         ],
         temperature: 0.7,
-        max_tokens: 150
+        max_tokens: 200 // Augmenté pour permettre des réponses plus complètes si nécessaire
       });
 
       const reply = completion.choices[0].message.content.trim();
