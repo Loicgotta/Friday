@@ -295,9 +295,10 @@ class CommentMonitor {
       // Générer la réponse basée sur le prompt configuré
       const replyText = await this.generateReply(comment.text, config);
 
-      // Poster la réponse sur Instagram
+      // Poster la réponse DIRECTEMENT sur le commentaire (reply to comment)
+      // Au lieu de poster un commentaire sur le média, on répond au commentaire
       const response = await axios.post(
-        `https://graph.instagram.com/${media.id}/comments`,
+        `https://graph.instagram.com/${comment.id}/replies`,
         {
           message: replyText
         },
@@ -317,12 +318,14 @@ class CommentMonitor {
         replyText
       );
 
-      console.log(`✅ Réponse postée sur Instagram - commentaire ${comment.id}`);
-      console.log(`   Commentaire: "${comment.text}" par @${comment.username}`);
-      console.log(`   Réponse: "${replyText}"`);
+      console.log(`✅ Réponse postée sur Instagram (reply to comment) - ${comment.id}`);
+      console.log(`   💬 Commentaire original: "${comment.text}" par @${comment.username}`);
+      console.log(`   ↳ Réponse: "${replyText}"`);
+      console.log(`   📌 ID de la réponse: ${response.data.id}`);
 
     } catch (error) {
       console.error(`❌ Erreur lors de la réponse au commentaire Instagram ${comment.id}:`, error.response?.data || error.message);
+      throw error;
     }
   }
 
