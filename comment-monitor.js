@@ -437,7 +437,7 @@ Instructions importantes:
 
       // Appeler OpenAI pour générer la réponse
       const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o', // GPT-4 Omni - Meilleur modèle pour des réponses intelligentes et contextuelles
+        model: 'gpt-4o-mini', // GPT-4o mini - Rapide, économique et performant
         messages: [
           {
             role: 'system',
@@ -449,7 +449,7 @@ Instructions importantes:
           }
         ],
         temperature: 0.7,
-        max_tokens: 200 // Augmenté pour permettre des réponses plus complètes si nécessaire
+        max_tokens: 150 // Optimisé pour des réponses concises
       });
 
       const reply = completion.choices[0].message.content.trim();
