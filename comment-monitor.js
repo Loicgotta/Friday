@@ -11,11 +11,37 @@ class CommentMonitor {
 
     // Valider la présence de la clé OpenAI
     if (!process.env.OPENAI_API_KEY) {
-      console.error('❌ ERREUR CRITIQUE: OPENAI_API_KEY n\'est pas définie');
-      console.error('💡 Solution: Ajoutez OPENAI_API_KEY dans vos variables d\'environnement');
-      console.error('   - Sur Render: Dashboard > Environment > Add Environment Variable');
-      console.error('   - Localement: fichier .env ou export OPENAI_API_KEY=sk-...');
+      console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.error('❌ ERREUR CRITIQUE AU DÉMARRAGE ❌');
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+      console.error('🔍 PROBLÈME: OPENAI_API_KEY n\'est pas définie\n');
+      console.error('📋 IMPACT:');
+      console.error('   → L\'agent IA ne peut PAS générer de réponses aux commentaires');
+      console.error('   → Le service va démarrer mais sera NON FONCTIONNEL\n');
+      console.error('✅ SOLUTION IMMÉDIATE:');
+      console.error('   1. Sur Render:');
+      console.error('      → Dashboard > Votre service > Environment');
+      console.error('      → Add Environment Variable');
+      console.error('      → Key: OPENAI_API_KEY');
+      console.error('      → Value: sk-proj-... (votre clé OpenAI)');
+      console.error('   2. Obtenir une clé: https://platform.openai.com/api-keys');
+      console.error('   3. Le service redémarrera automatiquement après l\'ajout\n');
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
       throw new Error('OPENAI_API_KEY manquante - L\'agent IA ne peut pas fonctionner sans clé OpenAI');
+    }
+
+    // Valider le format de la clé
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey.startsWith('sk-')) {
+      console.warn('\n⚠️  AVERTISSEMENT: La clé OPENAI_API_KEY ne commence pas par "sk-"');
+      console.warn('   Format attendu: sk-proj-... ou sk-...');
+      console.warn('   Cette clé pourrait être invalide\n');
+    }
+
+    if (apiKey.includes(' ')) {
+      console.error('\n❌ ERREUR: La clé OPENAI_API_KEY contient des espaces');
+      console.error('   Supprimez tous les espaces de la clé dans Render\n');
+      throw new Error('OPENAI_API_KEY mal formatée (contient des espaces)');
     }
 
     // Initialiser OpenAI
@@ -23,7 +49,9 @@ class CommentMonitor {
       apiKey: process.env.OPENAI_API_KEY
     });
 
-    console.log('✅ Client OpenAI initialisé avec succès');
+    console.log('\n✅ Client OpenAI initialisé avec succès');
+    console.log(`   Clé API: ${apiKey.substring(0, 10)}...${apiKey.substring(apiKey.length - 4)}`);
+    console.log(`   Modèle configuré: gpt-4o-mini\n`);
   }
 
   /**
@@ -554,14 +582,87 @@ Analyse ce commentaire et réponds de manière personnalisée et pertinente.`
       return reply;
 
     } catch (error) {
+      console.error('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.error('❌ ERREUR OPENAI CRITIQUE ❌');
-      console.error('Message d\'erreur:', error.message);
-      console.error('Stack:', error.stack);
-      console.error('Response:', error.response?.data);
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-      // Si OpenAI échoue, on LÈVE une exception au lieu d'utiliser un fallback générique
-      // Cela permet de détecter le problème rapidement
-      throw new Error(`Erreur OpenAI: ${error.message}. Le commentaire ne peut pas être traité automatiquement.`);
+      // Diagnostic détaillé selon le type d'erreur
+      if (error.message.includes('Connection error') || error.code === 'ENOTFOUND') {
+        console.error('🔍 TYPE D\'ERREUR: Impossible de se connecter à OpenAI\n');
+        console.error('📋 CAUSE PROBABLE:');
+        console.error('   → La clé OPENAI_API_KEY est manquante ou vide');
+        console.error('   → La clé est mal formatée (espaces, caractères invalides)');
+        console.error('   → Problème réseau empêchant d\'atteindre api.openai.com\n');
+        console.error('✅ SOLUTION:');
+        console.error('   1. Vérifiez que OPENAI_API_KEY existe dans l\'environnement Render');
+        console.error('   2. Dashboard Render → Environment → OPENAI_API_KEY');
+        console.error('   3. La clé doit commencer par "sk-proj-" ou "sk-"');
+        console.error('   4. Créez une nouvelle clé sur https://platform.openai.com/api-keys\n');
+
+      } else if (error.status === 401 || error.message.includes('Incorrect API key') || error.message.includes('Invalid API key')) {
+        console.error('🔍 TYPE D\'ERREUR: Authentification refusée\n');
+        console.error('📋 CAUSE PROBABLE:');
+        console.error('   → La clé API OpenAI est INVALIDE ou RÉVOQUÉE');
+        console.error('   → La clé a expiré');
+        console.error('   → La clé appartient à un autre compte\n');
+        console.error('✅ SOLUTION:');
+        console.error('   1. Allez sur https://platform.openai.com/api-keys');
+        console.error('   2. Créez une NOUVELLE clé secrète');
+        console.error('   3. Remplacez OPENAI_API_KEY dans Render avec cette nouvelle clé');
+        console.error('   4. Redéployez le service (Render le fera automatiquement)\n');
+
+      } else if (error.status === 429) {
+        console.error('🔍 TYPE D\'ERREUR: Quota ou limite de taux dépassée\n');
+        console.error('📋 CAUSE PROBABLE:');
+        console.error('   → Trop de requêtes en peu de temps (rate limit)');
+        console.error('   → Quota mensuel OpenAI épuisé');
+        console.error('   → Compte OpenAI en free tier (limites strictes)\n');
+        console.error('✅ SOLUTION:');
+        console.error('   1. Vérifiez votre usage: https://platform.openai.com/usage');
+        console.error('   2. Ajoutez un mode de paiement si vous êtes en free tier');
+        console.error('   3. Attendez quelques minutes avant de réessayer');
+        console.error('   4. Augmentez le délai entre vérifications (checkInterval)\n');
+
+      } else if (error.status === 400) {
+        console.error('🔍 TYPE D\'ERREUR: Requête invalide\n');
+        console.error('📋 CAUSE PROBABLE:');
+        console.error('   → Le modèle "gpt-4o-mini" n\'existe pas ou n\'est pas accessible');
+        console.error('   → Les paramètres de la requête sont invalides');
+        console.error('   → Le commentaire contient du contenu non autorisé\n');
+        console.error('✅ SOLUTION:');
+        console.error('   1. Vérifiez que le modèle existe: https://platform.openai.com/docs/models');
+        console.error('   2. Essayez avec "gpt-4o" ou "gpt-3.5-turbo"');
+        console.error('   3. Vérifiez les logs pour voir la requête exacte\n');
+        console.error('📝 Détails de l\'erreur:', error.response?.data);
+
+      } else if (error.status === 500 || error.status === 502 || error.status === 503) {
+        console.error('🔍 TYPE D\'ERREUR: Serveurs OpenAI indisponibles\n');
+        console.error('📋 CAUSE PROBABLE:');
+        console.error('   → Les serveurs OpenAI ont un problème temporaire');
+        console.error('   → Maintenance en cours\n');
+        console.error('✅ SOLUTION:');
+        console.error('   1. Attendez quelques minutes');
+        console.error('   2. Vérifiez le statut: https://status.openai.com');
+        console.error('   3. Le système réessaiera automatiquement au prochain cycle\n');
+
+      } else {
+        console.error('🔍 TYPE D\'ERREUR: Erreur inconnue\n');
+        console.error('📋 DÉTAILS TECHNIQUES:');
+        console.error('   Message:', error.message);
+        console.error('   Code:', error.code);
+        console.error('   Status HTTP:', error.status);
+        console.error('   Response:', JSON.stringify(error.response?.data, null, 2));
+        console.error('   Stack:', error.stack);
+        console.error('\n✅ SOLUTION:');
+        console.error('   1. Copiez ces logs et envoyez-les au support');
+        console.error('   2. Vérifiez les logs complets dans Render');
+        console.error('   3. Testez avec: node diagnose-openai.js\n');
+      }
+
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+      // Lever une exception pour que l'erreur soit visible dans les logs Render
+      throw new Error(`[OpenAI] ${error.message}`);
     }
   }
 
