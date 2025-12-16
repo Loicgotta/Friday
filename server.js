@@ -3,12 +3,49 @@ const express = require('express');
 const session = require('express-session');
 const axios = require('axios');
 const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const Database = require('./database');
 const CommentMonitor = require('./comment-monitor');
+const ContentPublisher = require('./content-publisher');
 
 const app = express();
 const db = new Database();
 const commentMonitor = new CommentMonitor();
+const contentPublisher = new ContentPublisher();
+
+// Configuration de multer pour l'upload de fichiers
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 100 * 1024 * 1024 // 100MB max
+  },
+  fileFilter: function (req, file, cb) {
+    // Accepter uniquement images et vidéos
+    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'video/mp4', 'video/quicktime', 'video/mpeg'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Type de fichier non autorisé. Utilisez JPG, PNG, MP4 ou MOV'));
+    }
+  }
+});
 
 // Middleware
 app.use(cors({
@@ -30,6 +67,7 @@ app.use(session({
 
 // Servir les fichiers statiques
 app.use(express.static('public'));
+app.use('/uploads', express.static(uploadDir));
 
 // Permissions Facebook et Instagram requises pour l'agent IA
 const FACEBOOK_PERMISSIONS = [
@@ -943,6 +981,181 @@ app.get('/api/agent/stats', async (req, res) => {
   }
 });
 
+// ============================================================
+// ROUTES DE PUBLICATION DE CONTENU
+// ============================================================
+
+/**
+ * Upload de fichier (image ou vidéo)
+ */
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'Aucun fichier uploadé' });
+  }
+
+  // Construire l'URL complète du fichier
+  const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+
+  // Déterminer le type de media
+  const mediaType = req.file.mimetype.startsWith('image/') ? 'image' : 'video';
+
+  res.json({
+    success: true,
+    file: {
+      filename: req.file.filename,
+      url: fileUrl,
+      media_type: mediaType,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    }
+  });
+});
+
+/**
+ * Créer du contenu programmé
+ */
+app.post('/api/content/schedule', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    const user = await db.getUserByFacebookId(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const { account_id, account_type, content_type, scheduled_time, caption, media_url, media_type } = req.body;
+
+    // Validation
+    if (!account_id || !account_type || !content_type || !scheduled_time) {
+      return res.status(400).json({ error: 'Champs requis manquants' });
+    }
+
+    // Créer le contenu programmé
+    const result = await db.createScheduledContent({
+      user_id: user.id,
+      account_id,
+      account_type,
+      content_type,
+      scheduled_time,
+      caption,
+      media_url,
+      media_type
+    });
+
+    res.json({
+      success: true,
+      content_id: result.id,
+      message: 'Contenu programmé avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la programmation du contenu:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Publier immédiatement (sans programmation)
+ */
+app.post('/api/content/publish-now', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    const user = await db.getUserByFacebookId(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const { account_id, account_type, content_type, caption, media_url, media_type } = req.body;
+
+    // Validation
+    if (!account_id || !account_type || !content_type) {
+      return res.status(400).json({ error: 'Champs requis manquants' });
+    }
+
+    // Publier immédiatement
+    const result = await contentPublisher.publishNow({
+      user_id: user.id,
+      account_id,
+      account_type,
+      content_type,
+      caption,
+      media_url,
+      media_type
+    });
+
+    res.json({
+      success: true,
+      content: result,
+      message: 'Contenu publié avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la publication du contenu:', error);
+    res.status(500).json({ error: error.message || 'Erreur serveur' });
+  }
+});
+
+/**
+ * Récupérer le contenu programmé de l'utilisateur
+ */
+app.get('/api/content/scheduled', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    const user = await db.getUserByFacebookId(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const scheduledContent = await db.getScheduledContentByUserId(user.id);
+    res.json({ content: scheduledContent });
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération du contenu programmé:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Supprimer du contenu programmé
+ */
+app.delete('/api/content/scheduled/:contentId', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    const user = await db.getUserByFacebookId(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const { contentId } = req.params;
+    const result = await db.deleteScheduledContent(contentId, user.id);
+
+    if (result.deleted) {
+      res.json({ success: true, message: 'Contenu supprimé' });
+    } else {
+      res.status(404).json({ error: 'Contenu non trouvé' });
+    }
+
+  } catch (error) {
+    console.error('Erreur lors de la suppression du contenu:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 /**
  * Fonction utilitaire pour générer un state aléatoire (protection CSRF)
  */
@@ -959,11 +1172,17 @@ db.init().then(() => {
     console.log(`📱 Interface d'authentification: http://localhost:${PORT}`);
     console.log(`🤖 API pour l'agent IA: http://localhost:${PORT}/api/users`);
     console.log(`⚙️  Configuration agent IA: http://localhost:${PORT}/agent-config.html`);
+    console.log(`📤 Publication de contenu: http://localhost:${PORT}/publisher.html`);
     console.log('\n✅ Prêt à recevoir des connexions Facebook!\n');
 
     // Démarrer le monitoring des commentaires
     commentMonitor.start().catch(err => {
       console.error('❌ Erreur lors du démarrage du monitoring:', err);
+    });
+
+    // Démarrer le système de publication automatique
+    contentPublisher.start().catch(err => {
+      console.error('❌ Erreur lors du démarrage du système de publication:', err);
     });
   });
 }).catch(error => {

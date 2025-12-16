@@ -94,6 +94,27 @@ class Database {
       )
     `;
 
+    const createScheduledContentTable = `
+      CREATE TABLE IF NOT EXISTS scheduled_content (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        account_id TEXT NOT NULL,
+        account_type TEXT NOT NULL CHECK(account_type IN ('facebook', 'instagram')),
+        content_type TEXT NOT NULL CHECK(content_type IN ('post', 'story', 'reel')),
+        status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'publishing', 'published', 'failed')),
+        scheduled_time TEXT NOT NULL,
+        caption TEXT,
+        media_url TEXT,
+        media_type TEXT CHECK(media_type IN ('image', 'video', null)),
+        container_id TEXT,
+        published_id TEXT,
+        error_message TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        published_at TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `;
+
     return new Promise((resolve, reject) => {
       this.db.serialize(() => {
         this.db.run(createUsersTable, (err) => {
@@ -126,6 +147,14 @@ class Database {
             return reject(err);
           }
           console.log('✅ Table instagram_accounts créée/vérifiée');
+        });
+
+        this.db.run(createScheduledContentTable, (err) => {
+          if (err) {
+            console.error('Erreur lors de la création de la table scheduled_content:', err);
+            return reject(err);
+          }
+          console.log('✅ Table scheduled_content créée/vérifiée');
           resolve();
         });
       });
@@ -485,6 +514,171 @@ class Database {
         } else {
           console.log(`✅ Compte Instagram supprimé`);
           resolve(this.changes);
+        }
+      });
+    });
+  }
+
+  // ============================================================
+  // GESTION DU CONTENU PROGRAMMÉ
+  // ============================================================
+
+  /**
+   * Créer un nouveau contenu programmé
+   */
+  async createScheduledContent(contentData) {
+    const {
+      user_id,
+      account_id,
+      account_type,
+      content_type,
+      scheduled_time,
+      caption,
+      media_url,
+      media_type
+    } = contentData;
+
+    return new Promise((resolve, reject) => {
+      const query = `
+        INSERT INTO scheduled_content
+        (user_id, account_id, account_type, content_type, scheduled_time, caption, media_url, media_type, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+      `;
+
+      this.db.run(
+        query,
+        [user_id, account_id, account_type, content_type, scheduled_time, caption, media_url, media_type],
+        function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve({ id: this.lastID });
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * Récupérer tout le contenu programmé d'un utilisateur
+   */
+  async getScheduledContentByUserId(userId) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT * FROM scheduled_content
+        WHERE user_id = ?
+        ORDER BY scheduled_time ASC
+      `;
+
+      this.db.all(query, [userId], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
+  }
+
+  /**
+   * Récupérer le contenu prêt à être publié
+   */
+  async getPendingScheduledContent() {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT * FROM scheduled_content
+        WHERE status = 'pending'
+        AND datetime(scheduled_time) <= datetime('now')
+        ORDER BY scheduled_time ASC
+      `;
+
+      this.db.all(query, [], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
+  }
+
+  /**
+   * Mettre à jour le statut d'un contenu programmé
+   */
+  async updateScheduledContentStatus(contentId, status, additionalData = {}) {
+    return new Promise((resolve, reject) => {
+      const updates = ['status = ?'];
+      const params = [status];
+
+      if (additionalData.container_id) {
+        updates.push('container_id = ?');
+        params.push(additionalData.container_id);
+      }
+
+      if (additionalData.published_id) {
+        updates.push('published_id = ?');
+        params.push(additionalData.published_id);
+      }
+
+      if (additionalData.error_message) {
+        updates.push('error_message = ?');
+        params.push(additionalData.error_message);
+      }
+
+      if (status === 'published') {
+        updates.push('published_at = datetime(\'now\')');
+      }
+
+      params.push(contentId);
+
+      const query = `
+        UPDATE scheduled_content
+        SET ${updates.join(', ')}
+        WHERE id = ?
+      `;
+
+      this.db.run(query, params, function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ changes: this.changes });
+        }
+      });
+    });
+  }
+
+  /**
+   * Supprimer un contenu programmé
+   */
+  async deleteScheduledContent(contentId, userId) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        DELETE FROM scheduled_content
+        WHERE id = ? AND user_id = ?
+      `;
+
+      this.db.run(query, [contentId, userId], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ deleted: this.changes > 0 });
+        }
+      });
+    });
+  }
+
+  /**
+   * Récupérer un contenu programmé par son ID
+   */
+  async getScheduledContentById(contentId) {
+    return new Promise((resolve, reject) => {
+      const query = `SELECT * FROM scheduled_content WHERE id = ?`;
+
+      this.db.get(query, [contentId], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row);
         }
       });
     });
