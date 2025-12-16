@@ -1156,6 +1156,173 @@ app.delete('/api/content/scheduled/:contentId', async (req, res) => {
   }
 });
 
+// ============================================================
+// ROUTES DE GESTION DES COMMENTAIRES
+// ============================================================
+
+/**
+ * Récupérer l'historique des commentaires traités
+ */
+app.get('/api/comments/history', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    const user = await db.getUserByFacebookId(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const { platform, page_id, limit = 100, offset = 0 } = req.query;
+
+    // Construire la requête SQL
+    let query = `
+      SELECT * FROM processed_comments
+      WHERE user_id = ?
+    `;
+    const params = [user.id];
+
+    // Filtrer par plateforme si spécifié
+    if (platform === 'instagram') {
+      query += ` AND page_id LIKE 'ig_%'`;
+    } else if (platform === 'facebook') {
+      query += ` AND page_id NOT LIKE 'ig_%'`;
+    }
+
+    // Filtrer par page/compte spécifique si spécifié
+    if (page_id) {
+      query += ` AND page_id = ?`;
+      params.push(page_id);
+    }
+
+    query += ` ORDER BY replied_at DESC LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), parseInt(offset));
+
+    const comments = await new Promise((resolve, reject) => {
+      db.db.all(query, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+
+    // Compter le total
+    let countQuery = `
+      SELECT COUNT(*) as total FROM processed_comments
+      WHERE user_id = ?
+    `;
+    const countParams = [user.id];
+
+    if (platform === 'instagram') {
+      countQuery += ` AND page_id LIKE 'ig_%'`;
+    } else if (platform === 'facebook') {
+      countQuery += ` AND page_id NOT LIKE 'ig_%'`;
+    }
+
+    if (page_id) {
+      countQuery += ` AND page_id = ?`;
+      countParams.push(page_id);
+    }
+
+    const total = await new Promise((resolve, reject) => {
+      db.db.get(countQuery, countParams, (err, row) => {
+        if (err) reject(err);
+        else resolve(row.total);
+      });
+    });
+
+    res.json({
+      comments,
+      total,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération de l\'historique:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * Récupérer les statistiques des commentaires
+ */
+app.get('/api/comments/stats', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    const user = await db.getUserByFacebookId(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Total de commentaires
+    const totalComments = await new Promise((resolve, reject) => {
+      db.db.get(
+        'SELECT COUNT(*) as count FROM processed_comments WHERE user_id = ?',
+        [user.id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.count);
+        }
+      );
+    });
+
+    // Commentaires Instagram
+    const instagramComments = await new Promise((resolve, reject) => {
+      db.db.get(
+        `SELECT COUNT(*) as count FROM processed_comments
+         WHERE user_id = ? AND page_id LIKE 'ig_%'`,
+        [user.id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.count);
+        }
+      );
+    });
+
+    // Commentaires Facebook
+    const facebookComments = await new Promise((resolve, reject) => {
+      db.db.get(
+        `SELECT COUNT(*) as count FROM processed_comments
+         WHERE user_id = ? AND page_id NOT LIKE 'ig_%'`,
+        [user.id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.count);
+        }
+      );
+    });
+
+    // Commentaires des dernières 24h
+    const last24h = await new Promise((resolve, reject) => {
+      db.db.get(
+        `SELECT COUNT(*) as count FROM processed_comments
+         WHERE user_id = ?
+         AND datetime(replied_at) >= datetime('now', '-1 day')`,
+        [user.id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.count);
+        }
+      );
+    });
+
+    res.json({
+      total: totalComments,
+      instagram: instagramComments,
+      facebook: facebookComments,
+      last24h: last24h
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération des stats:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 /**
  * Fonction utilitaire pour générer un state aléatoire (protection CSRF)
  */
