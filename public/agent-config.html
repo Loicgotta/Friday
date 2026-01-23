@@ -3,20 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuration Agent IA - Friday</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Friday - Configuration Agent IA</title>
+    <link rel="stylesheet" href="friday-theme.css">
     <style>
-        .config-container {
-            max-width: 900px;
-            margin: 20px auto;
-        }
-
-        .page-selector {
-            margin-bottom: 30px;
-        }
-
         .page-card {
-            background: #f8f9fa;
+            background: var(--bg-dark-lighter);
             border-radius: 12px;
             padding: 15px;
             margin-bottom: 15px;
@@ -26,47 +17,13 @@
         }
 
         .page-card:hover {
-            border-color: #667eea;
+            border-color: var(--primary-orange);
             transform: translateY(-2px);
         }
 
         .page-card.selected {
-            border-color: #667eea;
-            background: #eef1ff;
-        }
-
-        .config-form {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 1em;
-            font-family: inherit;
-        }
-
-        .form-group textarea {
-            min-height: 120px;
-            resize: vertical;
+            border-color: var(--primary-orange);
+            background: rgba(255, 107, 53, 0.1);
         }
 
         .toggle-switch {
@@ -89,7 +46,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: #ccc;
+            background-color: var(--border-color);
             transition: .4s;
             border-radius: 34px;
         }
@@ -107,7 +64,7 @@
         }
 
         input:checked + .slider {
-            background-color: #667eea;
+            background-color: var(--primary-orange);
         }
 
         input:checked + .slider:before {
@@ -123,256 +80,191 @@
         }
 
         .status-badge.active {
-            background: #28a745;
+            background: var(--success-green);
             color: white;
         }
 
         .status-badge.inactive {
-            background: #6c757d;
-            color: white;
-        }
-
-        .save-btn {
-            background: #28a745;
-            color: white;
-            padding: 15px 40px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .save-btn:hover {
-            background: #218838;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
-        }
-
-        .info-box {
-            background: #e7f3ff;
-            border-left: 4px solid #2196f3;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-
-        .stats-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 2em;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-        .navbar {
-            background: rgba(255, 255, 255, 0.98);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            padding: 15px 0;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
-
-        .nav-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .nav-brand {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 10px;
-        }
-
-        .nav-link {
-            color: #555;
-            text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
-
-        .nav-link:hover {
-            background: #f0f0f0;
-            color: #667eea;
-        }
-
-        .nav-link.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--border-color);
+            color: var(--text-secondary);
         }
     </style>
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-brand">Friday</div>
-            <div class="nav-links">
-                <a href="/" class="nav-link">🏠 Accueil</a>
-                <a href="/agent-config.html" class="nav-link active">🤖 Agent IA</a>
-                <a href="/publisher.html" class="nav-link">📤 Publier</a>
-                <a href="/comments-dashboard.html" class="nav-link">💬 Commentaires</a>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container">
-        <div class="card config-container">
-            <div class="header">
-                <h1>⚙️ Configuration Agent IA</h1>
-                <p class="subtitle">Configurez votre agent IA pour répondre automatiquement aux commentaires</p>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">F</div>
+                    <div class="logo-text">Friday</div>
+                </div>
+                <p class="sidebar-subtitle">Agent IA Marketing</p>
             </div>
 
-            <div id="not-logged-in" class="info-box" style="display: none;">
-                <p><strong>⚠️ Vous devez être connecté pour configurer l'agent IA.</strong></p>
-                <button onclick="window.location.href='/'" class="primary-btn">Se connecter</button>
+            <nav class="sidebar-nav">
+                <p class="nav-section-title">Navigation</p>
+                <ul class="nav-items">
+                    <li class="nav-item">
+                        <a href="/" class="nav-link">
+                            <span class="nav-icon">🏠</span>
+                            <span>Accueil</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/agent-config.html" class="nav-link active">
+                            <span class="nav-icon">🤖</span>
+                            <span>Agent IA</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/publisher.html" class="nav-link">
+                            <span class="nav-icon">📤</span>
+                            <span>Publier</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/comments-dashboard.html" class="nav-link">
+                            <span class="nav-icon">💬</span>
+                            <span>Commentaires</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <h1 class="page-title">⚙️ Configuration Agent IA</h1>
+                </div>
             </div>
 
-            <div id="config-content" style="display: none;">
-                <!-- Statistiques -->
-                <div class="stats-container">
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat-responses">0</div>
-                        <div class="stat-label">Réponses automatiques</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat-pages">0</div>
-                        <div class="stat-label">Pages surveillées</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat-active">0</div>
-                        <div class="stat-label">Agents actifs</div>
-                    </div>
+            <div class="content-area">
+                <div id="not-logged-in" class="card" style="display: none; border-left: 4px solid var(--primary-orange);">
+                    <p><strong>⚠️ Vous devez être connecté pour configurer l'agent IA.</strong></p>
+                    <button onclick="window.location.href='/'" class="btn btn-primary" style="margin-top: 15px;">Se connecter</button>
                 </div>
 
-                <!-- Sélection de la page -->
-                <div class="page-selector">
-                    <h3>📄 Sélectionnez une page</h3>
-                    <div id="pages-list"></div>
-                </div>
+                <div id="config-content" style="display: none;">
+                    <!-- Statistiques -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-responses">0</div>
+                            <div class="stat-label">Réponses automatiques</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-pages">0</div>
+                            <div class="stat-label">Pages surveillées</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-active">0</div>
+                            <div class="stat-label">Agents actifs</div>
+                        </div>
+                    </div>
 
-                <!-- Formulaire de configuration -->
-                <div id="config-form-container" style="display: none;">
-                    <div class="config-form">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <h3>🤖 Configuration de l'agent</h3>
-                            <div>
-                                <span class="status-badge" id="agent-status">Inactif</span>
+                    <!-- Sélection de la page -->
+                    <div class="card">
+                        <h3 class="card-title">📄 Sélectionnez une page</h3>
+                        <div id="pages-list"></div>
+                    </div>
+
+                    <!-- Formulaire de configuration -->
+                    <div id="config-form-container" style="display: none;">
+                        <div class="card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h3 class="card-title" style="margin: 0;">🤖 Configuration de l'agent</h3>
+                                <div>
+                                    <span class="status-badge" id="agent-status">Inactif</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <span style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span class="form-label">Activer l'agent IA</span>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="is-active">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </span>
+                                </label>
+                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">
+                                    L'agent surveillera et répondra automatiquement aux commentaires lorsqu'il est activé
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="prompt" class="form-label">
+                                    🤖 Système Prompt de l'agent
+                                    <button type="button" onclick="showDefaultPrompt()" style="margin-left: 10px; padding: 5px 10px; background: var(--bg-dark-lighter); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; font-size: 0.85em; color: var(--text-primary);">
+                                        Afficher le prompt par défaut
+                                    </button>
+                                </label>
+                                <textarea id="prompt" class="form-textarea" style="min-height: 250px; font-family: 'Courier New', monospace; font-size: 0.9em;" placeholder="Laissez vide pour utiliser le prompt par défaut motivant et professionnel, ou personnalisez-le ici..."></textarea>
+                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">
+                                    <strong>Conseil:</strong> Décrivez précisément comment l'agent doit se comporter
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="tone" class="form-label">Ton général</label>
+                                <select id="tone" class="form-select">
+                                    <option value="friendly">Amical</option>
+                                    <option value="professional">Professionnel</option>
+                                    <option value="casual">Décontracté</option>
+                                    <option value="motivating">Motivant et Enthousiaste</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="language" class="form-label">Langue</label>
+                                <select id="language" class="form-select">
+                                    <option value="fr">Français</option>
+                                    <option value="en">English</option>
+                                    <option value="es">Español</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <span style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span class="form-label">Réponses automatiques</span>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="auto-reply" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </span>
+                                </label>
+                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">
+                                    Répondre automatiquement aux nouveaux commentaires
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="delay" class="form-label">Délai avant réponse (minutes)</label>
+                                <input type="number" id="delay" class="form-input" value="0" min="0" max="60">
+                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">
+                                    Temps d'attente avant de répondre (0 = immédiat)
+                                </small>
+                            </div>
+
+                            <div style="background: var(--bg-dark-lighter); border-left: 4px solid var(--primary-orange); padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                                <strong style="color: var(--text-primary);">💡 Astuce:</strong>
+                                <span style="color: var(--text-secondary);"> Donnez des instructions claires dans le prompt</span>
+                            </div>
+
+                            <div style="text-align: center; margin-top: 30px;">
+                                <button onclick="saveConfig()" class="btn btn-success" style="padding: 15px 40px;">
+                                    💾 Sauvegarder la configuration
+                                </button>
                             </div>
                         </div>
-
-                        <div class="form-group">
-                            <label>
-                                <span style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span>Activer l'agent IA</span>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="is-active">
-                                        <span class="slider"></span>
-                                    </label>
-                                </span>
-                            </label>
-                            <small style="color: #666;">L'agent surveillera et répondra automatiquement aux commentaires lorsqu'il est activé</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="prompt">
-                                🤖 Système Prompt de l'agent (Personnalisez le comportement)
-                                <button type="button" onclick="showDefaultPrompt()" style="margin-left: 10px; padding: 5px 10px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 0.85em;">
-                                    Afficher le prompt par défaut
-                                </button>
-                            </label>
-                            <textarea id="prompt" style="min-height: 250px; font-family: 'Courier New', monospace; font-size: 0.9em;" placeholder="Laissez vide pour utiliser le prompt par défaut motivant et professionnel, ou personnalisez-le ici..."></textarea>
-                            <small style="color: #666;">
-                                <strong>Conseil:</strong> Décrivez précisément comment l'agent doit se comporter, ce qu'il représente, et comment il doit répondre.
-                                Un prompt bien défini améliore considérablement la qualité des réponses.
-                            </small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="tone">Ton général</label>
-                            <select id="tone">
-                                <option value="friendly">Amical</option>
-                                <option value="professional">Professionnel</option>
-                                <option value="casual">Décontracté</option>
-                                <option value="motivating">Motivant et Enthousiaste</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="language">Langue</label>
-                            <select id="language">
-                                <option value="fr">Français</option>
-                                <option value="en">English</option>
-                                <option value="es">Español</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>
-                                <span style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span>Réponses automatiques</span>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="auto-reply" checked>
-                                        <span class="slider"></span>
-                                    </label>
-                                </span>
-                            </label>
-                            <small style="color: #666;">Répondre automatiquement aux nouveaux commentaires</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="delay">Délai avant réponse (minutes)</label>
-                            <input type="number" id="delay" value="0" min="0" max="60">
-                            <small style="color: #666;">Temps d'attente avant de répondre (0 = immédiat)</small>
-                        </div>
-
-                        <div class="info-box">
-                            <strong>💡 Astuce:</strong> Donnez des instructions claires dans le prompt. Exemple: "Réponds toujours de manière positive. Si c'est une question sur les prix, indique de contacter notre équipe. Utilise des emojis modérément."
-                        </div>
-
-                        <div style="text-align: center; margin-top: 30px;">
-                            <button onclick="saveConfig()" class="save-btn">💾 Sauvegarder la configuration</button>
-                        </div>
                     </div>
                 </div>
-
-                <div style="text-align: center; margin-top: 20px;">
-                    <button onclick="window.location.href='/success.html'" class="secondary-btn">← Retour au tableau de bord</button>
-                </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <script src="agent-config.js"></script>

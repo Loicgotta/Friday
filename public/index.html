@@ -3,63 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connexion Agent IA - Facebook/Meta</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Friday - Agent IA Facebook/Meta</title>
+    <link rel="stylesheet" href="friday-theme.css">
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <div class="header">
-                <h1>🤖 Agent IA Friday</h1>
-                <p class="subtitle">Connectez votre compte Meta pour permettre à l'agent IA de gérer vos publicités et contenus</p>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">F</div>
+                    <div class="logo-text">Friday</div>
+                </div>
+                <p class="sidebar-subtitle">Agent IA Marketing</p>
+                <select class="user-selector" id="user-selector" style="display: none;">
+                    <option>Sélectionner un compte...</option>
+                </select>
             </div>
 
-            <div id="error-message" class="error-message" style="display: none;"></div>
+            <nav class="sidebar-nav">
+                <p class="nav-section-title">Navigation</p>
+                <ul class="nav-items">
+                    <li class="nav-item">
+                        <a href="/" class="nav-link active">
+                            <span class="nav-icon">🏠</span>
+                            <span>Accueil</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/agent-config.html" class="nav-link" id="nav-agent">
+                            <span class="nav-icon">🤖</span>
+                            <span>Agent IA</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/publisher.html" class="nav-link" id="nav-publish">
+                            <span class="nav-icon">📤</span>
+                            <span>Publier</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/comments-dashboard.html" class="nav-link" id="nav-comments">
+                            <span class="nav-icon">💬</span>
+                            <span>Commentaires</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
 
-            <div id="login-section" class="section">
-                <div class="info-box">
-                    <h3>📋 Permissions demandées</h3>
-                    <ul class="permissions-list">
-                        <li>✅ Créer et gérer des publicités (Marketing API)</li>
-                        <li>✅ Gérer les publicités d'applications (Meta Ads Manager)</li>
-                        <li>✅ Gérer les messages et contenus Instagram</li>
-                        <li>✅ Mesurer les performances publicitaires</li>
-                        <li>✅ Capturer et gérer les leads publicitaires</li>
-                        <li>✅ Gérer tout sur vos Pages Facebook</li>
-                    </ul>
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <h1 class="page-title">Connexion</h1>
+                </div>
+                <div class="top-bar-right">
+                    <button id="logout-btn" class="btn btn-danger" style="display: none;">
+                        🚪 Déconnexion
+                    </button>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <div id="error-message" class="card" style="display: none; border-left: 4px solid var(--error-red);"></div>
+
+                <!-- Section de connexion -->
+                <div id="login-section" style="display: block;">
+                    <div class="card">
+                        <h2 class="card-title">🤖 Bienvenue sur Friday</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 25px;">
+                            Connectez votre compte Meta pour permettre à l'agent IA de gérer vos publicités et contenus
+                        </p>
+
+                        <div style="background: var(--bg-dark-lighter); border-left: 4px solid var(--primary-orange); padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                            <h3 style="color: var(--text-primary); margin-bottom: 15px;">📋 Permissions demandées</h3>
+                            <ul style="list-style: none; color: var(--text-secondary); line-height: 2;">
+                                <li>✅ Créer et gérer des publicités (Marketing API)</li>
+                                <li>✅ Gérer les publicités d'applications (Meta Ads Manager)</li>
+                                <li>✅ Gérer les messages et contenus Instagram</li>
+                                <li>✅ Mesurer les performances publicitaires</li>
+                                <li>✅ Capturer et gérer les leads publicitaires</li>
+                                <li>✅ Gérer tout sur vos Pages Facebook</li>
+                            </ul>
+                        </div>
+
+                        <button id="facebook-login-btn" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 15px;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
+                            Se connecter avec Facebook
+                        </button>
+
+                        <p style="color: var(--text-secondary); text-align: center; margin-top: 20px; font-size: 0.9rem;">
+                            🔒 Vos données sont sécurisées. Vous pouvez révoquer l'accès à tout moment.
+                        </p>
+                    </div>
                 </div>
 
-                <button id="facebook-login-btn" class="facebook-btn">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
-                    Se connecter avec Facebook
-                </button>
+                <!-- Section utilisateur connecté -->
+                <div id="user-section" style="display: none;">
+                    <div class="card">
+                        <h2 class="card-title">✅ Connecté</h2>
+                        <p id="user-name" style="color: var(--text-secondary); margin-bottom: 30px;"></p>
 
-                <p class="security-note">
-                    🔒 Vos données sont sécurisées. Vous pouvez révoquer l'accès à tout moment.
-                </p>
-            </div>
-
-            <div id="user-section" class="section" style="display: none;">
-                <div class="user-info">
-                    <h3>✅ Connecté</h3>
-                    <p id="user-name"></p>
-
-                    <div class="button-grid">
-                        <button id="view-details-btn" class="secondary-btn">📊 Voir les détails</button>
-                        <button onclick="window.location.href='/agent-config.html'" class="secondary-btn">🤖 Configurer l'agent IA</button>
-                        <button onclick="window.location.href='/publisher.html'" class="primary-btn">📤 Publier du contenu</button>
-                        <button onclick="window.location.href='/comments-dashboard.html'" class="secondary-btn">💬 Commentaires</button>
-                        <button id="logout-btn" class="danger-btn">🚪 Déconnexion</button>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                            <button id="view-details-btn" class="btn btn-secondary" style="width: 100%;">
+                                📊 Voir les détails
+                            </button>
+                            <button onclick="window.location.href='/agent-config.html'" class="btn btn-primary" style="width: 100%;">
+                                🤖 Configurer l'agent IA
+                            </button>
+                            <button onclick="window.location.href='/publisher.html'" class="btn btn-primary" style="width: 100%;">
+                                📤 Publier du contenu
+                            </button>
+                            <button onclick="window.location.href='/comments-dashboard.html'" class="btn btn-secondary" style="width: 100%;">
+                                💬 Commentaires
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="footer">
-            <p>Développé pour l'Agent IA Friday • Sécurisé par Meta OAuth 2.0</p>
-        </div>
+        </main>
     </div>
 
     <script src="script.js"></script>
