@@ -756,7 +756,7 @@
         </main>
     </div>
 
-    <script src="script.js"></script>
+    <!-- script.js removed - all functionality is now inline -->
     <script>
         // Gestion des tabs
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -835,16 +835,23 @@
         });
 
         // Gestion de la connexion
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             // Vérifier si l'utilisateur est connecté
-            fetch('/api/user')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.authenticated) {
-                        showLoggedIn(data.user);
+            try {
+                const statusResponse = await fetch('/api/status');
+                const statusData = await statusResponse.json();
+
+                if (statusData.authenticated) {
+                    // Récupérer les détails de l'utilisateur
+                    const userResponse = await fetch('/api/user');
+                    if (userResponse.ok) {
+                        const userData = await userResponse.json();
+                        showLoggedIn(userData);
                     }
-                })
-                .catch(err => console.error(err));
+                }
+            } catch (err) {
+                console.error('Erreur lors de la vérification de l\'authentification:', err);
+            }
         });
 
         function showLoggedIn(user) {
@@ -865,8 +872,16 @@
                         <p style="color: var(--text-primary); font-weight: 600; font-size: 1.1rem;">${user.name}</p>
                     </div>
                     <div style="margin-bottom: 20px;">
-                        <p style="color: var(--text-secondary); margin-bottom: 10px;">ID utilisateur :</p>
-                        <p style="color: var(--text-primary); font-family: monospace;">${user.id}</p>
+                        <p style="color: var(--text-secondary); margin-bottom: 10px;">Email :</p>
+                        <p style="color: var(--text-primary);">${user.email || 'Non fourni'}</p>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <p style="color: var(--text-secondary); margin-bottom: 10px;">ID Facebook :</p>
+                        <p style="color: var(--text-primary); font-family: monospace;">${user.facebook_id}</p>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <p style="color: var(--text-secondary); margin-bottom: 10px;">Pages connectées :</p>
+                        <p style="color: var(--text-primary); font-weight: 600;">${user.pages ? user.pages.length : 0}</p>
                     </div>
                 `;
             }

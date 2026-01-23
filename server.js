@@ -290,8 +290,8 @@ app.get('/auth/facebook/callback', async (req, res) => {
     req.session.userId = userData.id;
     req.session.userName = userData.name;
 
-    // Rediriger vers la page de succès
-    res.redirect('/success.html');
+    // Rediriger vers la page principale (nouvelle interface unifiée)
+    res.redirect('/');
 
   } catch (error) {
     console.error('Erreur lors de l\'échange du token:', error.response?.data || error.message);
