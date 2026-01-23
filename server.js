@@ -843,6 +843,53 @@ app.get('/api/instagram/accounts', async (req, res) => {
 });
 
 /**
+ * Route: Récupérer tous les comptes (Facebook + Instagram) pour publication
+ */
+app.get('/api/accounts', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    const user = await db.getUserByFacebookId(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    const accounts = [];
+
+    // Ajouter les pages Facebook
+    const pages = JSON.parse(user.pages || '[]');
+    pages.forEach(page => {
+      accounts.push({
+        id: page.id,
+        name: page.name,
+        platform: 'Facebook',
+        type: 'page',
+        access_token: page.access_token
+      });
+    });
+
+    // Ajouter les comptes Instagram
+    const instagramAccounts = await db.getInstagramAccountsByUserId(req.session.userId);
+    instagramAccounts.forEach(account => {
+      accounts.push({
+        id: account.instagram_id,
+        name: account.name || account.username,
+        platform: 'Instagram',
+        type: 'account',
+        username: account.username
+      });
+    });
+
+    res.json({ accounts });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des comptes:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
  * Route 9: Supprimer un compte Instagram
  */
 app.delete('/api/instagram/:instagramId', async (req, res) => {

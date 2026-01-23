@@ -579,6 +579,11 @@
                                     </select>
                                 </div>
 
+                                <div class="form-group" id="scheduleTimeGroup" style="display: none;">
+                                    <label for="scheduleTime" class="form-label">Date et heure de publication</label>
+                                    <input type="datetime-local" id="scheduleTime" class="form-input">
+                                </div>
+
                                 <button class="btn btn-primary" style="width: 100%;">
                                     📤 Publier
                                 </button>
@@ -631,8 +636,32 @@
                             <h3 class="card-title">⚙️ Paramétrer l'agent IA</h3>
 
                             <div class="form-group">
-                                <label for="prompt" class="form-label">🤖 Système Prompt de l'agent</label>
-                                <textarea id="prompt" class="form-textarea" style="min-height: 250px; font-family: 'Courier New', monospace;" placeholder="Personnalisez le comportement de votre agent IA..."></textarea>
+                                <label for="page-select" class="form-label">📄 Sélectionnez une page</label>
+                                <select id="page-select" class="form-select">
+                                    <option value="">Chargement des pages...</option>
+                                </select>
+                                <small style="color: var(--text-secondary); display: block; margin-top: 5px;">
+                                    Sélectionnez la page Facebook ou le compte Instagram à configurer
+                                </small>
+                            </div>
+
+                            <div id="agent-config-form" style="display: none;">
+                                <div class="form-group">
+                                    <label>
+                                        <span style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span class="form-label">Activer l'agent pour cette page</span>
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="page-agent-active">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </span>
+                                    </label>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="prompt" class="form-label">🤖 Système Prompt de l'agent</label>
+                                    <textarea id="prompt" class="form-textarea" style="min-height: 250px; font-family: 'Courier New', monospace;" placeholder="Personnalisez le comportement de votre agent IA..."></textarea>
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -654,7 +683,24 @@
                                 </select>
                             </div>
 
-                            <button class="btn btn-success" style="width: 100%;">
+                            <div class="form-group">
+                                <label>
+                                    <span style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span class="form-label">Réponses automatiques</span>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="auto-reply" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </span>
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="delay" class="form-label">Délai avant réponse (minutes)</label>
+                                <input type="number" id="delay" class="form-input" value="0" min="0" max="60">
+                            </div>
+
+                            <button id="save-agent-config-btn" class="btn btn-success" style="width: 100%;">
                                 💾 Sauvegarder la configuration
                             </button>
                         </div>
@@ -778,6 +824,16 @@
             }
         });
 
+        // Gestion du mode de publication (afficher/cacher le champ datetime)
+        document.getElementById('publishMode')?.addEventListener('change', function(e) {
+            const scheduleTimeGroup = document.getElementById('scheduleTimeGroup');
+            if (e.target.value === 'schedule') {
+                scheduleTimeGroup.style.display = 'block';
+            } else {
+                scheduleTimeGroup.style.display = 'none';
+            }
+        });
+
         // Gestion de la connexion
         document.addEventListener('DOMContentLoaded', () => {
             // Vérifier si l'utilisateur est connecté
@@ -814,7 +870,145 @@
                     </div>
                 `;
             }
+
+            // Charger les comptes et les pages
+            loadAccountsForPublisher();
+            loadPagesForAgent();
         }
+
+        // Charger les comptes pour le formulaire de publication
+        async function loadAccountsForPublisher() {
+            try {
+                const response = await fetch('/api/accounts');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const accountSelect = document.getElementById('account');
+
+                if (accountSelect && data.accounts) {
+                    accountSelect.innerHTML = '<option value="">Sélectionnez un compte...</option>';
+                    data.accounts.forEach(account => {
+                        const option = document.createElement('option');
+                        option.value = JSON.stringify({id: account.id, platform: account.platform});
+                        option.textContent = `${account.name} (${account.platform})`;
+                        accountSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement des comptes:', error);
+            }
+        }
+
+        // Charger les pages pour la configuration de l'agent
+        async function loadPagesForAgent() {
+            try {
+                const response = await fetch('/api/user');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const pageSelect = document.getElementById('page-select');
+
+                if (pageSelect) {
+                    pageSelect.innerHTML = '<option value="">Sélectionnez une page...</option>';
+
+                    // Ajouter les pages Facebook
+                    if (data.pages && data.pages.length > 0) {
+                        data.pages.forEach(page => {
+                            const option = document.createElement('option');
+                            option.value = page.id;
+                            option.textContent = `${page.name} (Facebook)`;
+                            option.dataset.platform = 'facebook';
+                            pageSelect.appendChild(option);
+                        });
+                    }
+
+                    // Ajouter les comptes Instagram
+                    const instagramResponse = await fetch('/api/instagram/accounts');
+                    if (instagramResponse.ok) {
+                        const instagramData = await instagramResponse.json();
+                        if (instagramData.accounts && instagramData.accounts.length > 0) {
+                            instagramData.accounts.forEach(account => {
+                                const option = document.createElement('option');
+                                option.value = account.instagram_id;
+                                option.textContent = `${account.name || account.username} (Instagram)`;
+                                option.dataset.platform = 'instagram';
+                                pageSelect.appendChild(option);
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement des pages:', error);
+            }
+        }
+
+        // Gestionnaire de sélection de page
+        document.getElementById('page-select')?.addEventListener('change', async function(e) {
+            const pageId = e.target.value;
+            const agentConfigForm = document.getElementById('agent-config-form');
+
+            if (!pageId) {
+                agentConfigForm.style.display = 'none';
+                return;
+            }
+
+            agentConfigForm.style.display = 'block';
+
+            // Charger la config existante pour cette page
+            try {
+                const response = await fetch(`/api/agent/config/${pageId}`);
+                if (response.ok) {
+                    const config = await response.json();
+                    document.getElementById('page-agent-active').checked = config.is_active || false;
+                    document.getElementById('prompt').value = config.prompt || '';
+                    document.getElementById('tone').value = config.tone || 'friendly';
+                    document.getElementById('language').value = config.language || 'fr';
+                    document.getElementById('auto-reply').checked = config.auto_reply !== false;
+                    document.getElementById('delay').value = config.delay || 0;
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement de la config:', error);
+            }
+        });
+
+        // Sauvegarder la configuration de l'agent
+        document.getElementById('save-agent-config-btn')?.addEventListener('click', async function() {
+            const pageId = document.getElementById('page-select').value;
+
+            if (!pageId) {
+                alert('Veuillez sélectionner une page');
+                return;
+            }
+
+            const config = {
+                is_active: document.getElementById('page-agent-active').checked,
+                prompt: document.getElementById('prompt').value,
+                tone: document.getElementById('tone').value,
+                language: document.getElementById('language').value,
+                auto_reply: document.getElementById('auto-reply').checked,
+                delay: parseInt(document.getElementById('delay').value) || 0
+            };
+
+            try {
+                const response = await fetch(`/api/agent/config/${pageId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                if (response.ok) {
+                    alert('✅ Configuration sauvegardée avec succès !');
+                } else {
+                    const error = await response.json();
+                    alert('❌ Erreur : ' + (error.error || 'Erreur serveur'));
+                }
+            } catch (error) {
+                console.error('Erreur lors de la sauvegarde:', error);
+                alert('❌ Erreur lors de la sauvegarde de la configuration');
+            }
+        });
     </script>
 </body>
 </html>
