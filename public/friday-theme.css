@@ -1,12 +1,14 @@
 :root {
   --primary-orange: #FF6B35;
   --primary-orange-hover: #FF5722;
-  --bg-dark: #1a1a1a;
-  --bg-dark-lighter: #2a2a2a;
-  --bg-card: #252525;
+  --bg-dark: #0a0a0a;
+  --bg-sidebar: #141414;
+  --bg-top-bar: #0f0f0f;
+  --bg-card: #1a1a1a;
+  --bg-card-hover: #202020;
   --text-primary: #ffffff;
-  --text-secondary: #b0b0b0;
-  --border-color: #3a3a3a;
+  --text-secondary: #888888;
+  --border-color: #222222;
   --success-green: #4CAF50;
   --error-red: #f44336;
 }
@@ -33,8 +35,8 @@ body {
 
 /* Sidebar */
 .sidebar {
-  width: 280px;
-  background: var(--bg-dark-lighter);
+  width: 260px;
+  background: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -59,7 +61,7 @@ body {
   width: 40px;
   height: 40px;
   background: var(--primary-orange);
-  border-radius: 8px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -126,7 +128,7 @@ body {
 }
 
 .nav-link:hover {
-  background: var(--bg-card);
+  background: var(--bg-card-hover);
   color: var(--text-primary);
 }
 
@@ -142,13 +144,13 @@ body {
 /* Main content */
 .main-content {
   flex: 1;
-  margin-left: 280px;
+  margin-left: 260px;
   display: flex;
   flex-direction: column;
 }
 
 .top-bar {
-  background: var(--bg-dark-lighter);
+  background: var(--bg-top-bar);
   border-bottom: 1px solid var(--border-color);
   padding: 15px 30px;
   display: flex;
@@ -288,13 +290,14 @@ body {
 }
 
 .btn-secondary {
-  background: var(--bg-dark-lighter);
+  background: var(--bg-card);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-  background: var(--bg-card);
+  background: var(--bg-card-hover);
+  border-color: var(--border-color);
 }
 
 .btn-success {
@@ -325,7 +328,7 @@ body {
 .form-textarea {
   width: 100%;
   padding: 12px 15px;
-  background: var(--bg-dark-lighter);
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   color: var(--text-primary);
