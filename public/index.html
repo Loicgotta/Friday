@@ -836,16 +836,28 @@
 
         // Gestion de la connexion
         document.addEventListener('DOMContentLoaded', async () => {
+            // Bouton de connexion Facebook
+            document.getElementById('facebook-login-btn')?.addEventListener('click', function() {
+                window.location.href = '/auth/facebook';
+            });
+
             // Vérifier si l'utilisateur est connecté
             try {
-                const statusResponse = await fetch('/api/status');
+                const statusResponse = await fetch('/api/status', {
+                    credentials: 'include'
+                });
                 const statusData = await statusResponse.json();
+
+                console.log('Status check:', statusData); // Debug
 
                 if (statusData.authenticated) {
                     // Récupérer les détails de l'utilisateur
-                    const userResponse = await fetch('/api/user');
+                    const userResponse = await fetch('/api/user', {
+                        credentials: 'include'
+                    });
                     if (userResponse.ok) {
                         const userData = await userResponse.json();
+                        console.log('User data:', userData); // Debug
                         showLoggedIn(userData);
                     }
                 }
@@ -894,11 +906,18 @@
         // Charger les comptes pour le formulaire de publication
         async function loadAccountsForPublisher() {
             try {
-                const response = await fetch('/api/accounts');
-                if (!response.ok) return;
+                const response = await fetch('/api/accounts', {
+                    credentials: 'include'
+                });
+                if (!response.ok) {
+                    console.error('Erreur response:', response.status);
+                    return;
+                }
 
                 const data = await response.json();
                 const accountSelect = document.getElementById('account');
+
+                console.log('Accounts loaded:', data.accounts); // Debug
 
                 if (accountSelect && data.accounts) {
                     accountSelect.innerHTML = '<option value="">Sélectionnez un compte...</option>';
@@ -917,11 +936,18 @@
         // Charger les pages pour la configuration de l'agent
         async function loadPagesForAgent() {
             try {
-                const response = await fetch('/api/user');
-                if (!response.ok) return;
+                const response = await fetch('/api/user', {
+                    credentials: 'include'
+                });
+                if (!response.ok) {
+                    console.error('Erreur response:', response.status);
+                    return;
+                }
 
                 const data = await response.json();
                 const pageSelect = document.getElementById('page-select');
+
+                console.log('Pages loaded:', data.pages); // Debug
 
                 if (pageSelect) {
                     pageSelect.innerHTML = '<option value="">Sélectionnez une page...</option>';
@@ -938,9 +964,12 @@
                     }
 
                     // Ajouter les comptes Instagram
-                    const instagramResponse = await fetch('/api/instagram/accounts');
+                    const instagramResponse = await fetch('/api/instagram/accounts', {
+                        credentials: 'include'
+                    });
                     if (instagramResponse.ok) {
                         const instagramData = await instagramResponse.json();
+                        console.log('Instagram accounts loaded:', instagramData.accounts); // Debug
                         if (instagramData.accounts && instagramData.accounts.length > 0) {
                             instagramData.accounts.forEach(account => {
                                 const option = document.createElement('option');
