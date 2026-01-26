@@ -1409,7 +1409,7 @@
                         credentials: 'include',
                         body: JSON.stringify({
                             account_id: accountData.id,
-                            account_type: accountData.platform,
+                            account_type: accountData.platform.toLowerCase(), // Convertir en minuscules
                             content_type: contentType,
                             caption: caption,
                             media_url: uploadedFileUrl,
@@ -1439,7 +1439,7 @@
                         credentials: 'include',
                         body: JSON.stringify({
                             account_id: accountData.id,
-                            account_type: accountData.platform,
+                            account_type: accountData.platform.toLowerCase(), // Convertir en minuscules
                             content_type: contentType,
                             scheduled_time: scheduleTime,
                             caption: caption,
