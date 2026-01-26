@@ -379,6 +379,9 @@
     </style>
 </head>
 <body>
+    <!-- Zone de notifications -->
+    <div id="notifications-container"></div>
+
     <div class="app-container">
         <!-- Sidebar exactement comme Lovable -->
         <aside class="sidebar">
@@ -594,16 +597,18 @@
                                     <input type="datetime-local" id="scheduleTime" class="form-input">
                                 </div>
 
-                                <button class="btn btn-primary" style="width: 100%;">
+                                <button id="publish-btn" class="btn btn-primary" style="width: 100%;">
                                     📤 Publier
                                 </button>
                             </div>
 
                             <div class="card">
-                                <h3 class="card-title">Contenu programmé</h3>
-                                <div class="empty-documents">
-                                    <div style="font-size: 2rem; margin-bottom: 10px;">📅</div>
-                                    <p>Aucun contenu programmé</p>
+                                <h3 class="card-title">📅 Contenu programmé</h3>
+                                <div id="scheduled-content-list">
+                                    <div class="empty-documents">
+                                        <div style="font-size: 2rem; margin-bottom: 10px;">📅</div>
+                                        <p>Chargement...</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -973,6 +978,7 @@
             loadAccountsForPublisher();
             loadPagesForAgent();
             loadInstagramAccountsList();
+            loadScheduledContent();
         }
 
         // Charger les comptes pour le formulaire de publication
@@ -1092,7 +1098,7 @@
             const pageId = document.getElementById('page-select').value;
 
             if (!pageId) {
-                alert('Veuillez sélectionner une page');
+                showNotification('error', 'Champ requis', 'Veuillez sélectionner une page');
                 return;
             }
 
@@ -1115,14 +1121,14 @@
                 });
 
                 if (response.ok) {
-                    alert('✅ Configuration sauvegardée avec succès !');
+                    showNotification('success', 'Sauvegardé !', 'Configuration de l\'agent sauvegardée avec succès');
                 } else {
                     const error = await response.json();
-                    alert('❌ Erreur : ' + (error.error || 'Erreur serveur'));
+                    showNotification('error', 'Erreur', error.error || 'Erreur serveur');
                 }
             } catch (error) {
                 console.error('Erreur lors de la sauvegarde:', error);
-                alert('❌ Erreur lors de la sauvegarde de la configuration');
+                showNotification('error', 'Erreur', 'Erreur lors de la sauvegarde de la configuration');
             }
         });
 
@@ -1263,18 +1269,325 @@
                 });
 
                 if (response.ok) {
-                    alert('✅ Compte supprimé avec succès');
+                    showNotification('success', 'Supprimé', 'Compte Instagram supprimé avec succès');
                     loadInstagramAccountsList();
                     loadAccountsForPublisher();
                     loadPagesForAgent();
                 } else {
-                    alert('❌ Erreur lors de la suppression du compte');
+                    showNotification('error', 'Erreur', 'Erreur lors de la suppression du compte');
                 }
             } catch (error) {
                 console.error('Erreur:', error);
-                alert('❌ Erreur lors de la suppression du compte');
+                showNotification('error', 'Erreur', 'Erreur lors de la suppression du compte');
             }
         }
+
+        // ==============================
+        // Système de notifications
+        // ==============================
+
+        function showNotification(type, title, message) {
+            const container = document.getElementById('notifications-container');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+
+            const icons = {
+                success: '✅',
+                error: '❌',
+                info: 'ℹ️'
+            };
+
+            notification.innerHTML = `
+                <div class="notification-icon">${icons[type] || 'ℹ️'}</div>
+                <div class="notification-content">
+                    <div class="notification-title">${title}</div>
+                    <div class="notification-message">${message}</div>
+                </div>
+                <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+            `;
+
+            container.appendChild(notification);
+
+            // Auto-suppression après 5 secondes
+            setTimeout(() => {
+                notification.classList.add('slide-out');
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+        }
+
+        // ==============================
+        // Gestion de l'upload de fichiers
+        // ==============================
+
+        let uploadedFile = null;
+        let uploadedFileUrl = null;
+
+        document.getElementById('fileInput')?.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const preview = document.getElementById('uploadPreview');
+            preview.innerHTML = `<p style="color: var(--text-secondary); margin-top: 15px;">⏳ Upload en cours...</p>`;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erreur lors de l\'upload');
+                }
+
+                const data = await response.json();
+                uploadedFile = data.file;
+                uploadedFileUrl = data.file.url;
+
+                preview.innerHTML = `
+                    <p style="color: var(--success-green); margin-top: 15px;">
+                        ✅ ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                `;
+
+                showNotification('success', 'Fichier uploadé', `${file.name} a été uploadé avec succès`);
+            } catch (error) {
+                console.error('Erreur upload:', error);
+                preview.innerHTML = `<p style="color: var(--error-red); margin-top: 15px;">❌ Erreur lors de l'upload</p>`;
+                showNotification('error', 'Erreur d\'upload', 'Impossible d\'uploader le fichier');
+            }
+        });
+
+        // ==============================
+        // Gestion de la publication
+        // ==============================
+
+        document.getElementById('publish-btn')?.addEventListener('click', async function() {
+            const accountValue = document.getElementById('account').value;
+            const contentType = document.getElementById('contentType').value;
+            const caption = document.getElementById('caption').value;
+            const publishMode = document.getElementById('publishMode').value;
+            const scheduleTime = document.getElementById('scheduleTime').value;
+
+            // Validation
+            if (!accountValue) {
+                showNotification('error', 'Champ requis', 'Veuillez sélectionner un compte');
+                return;
+            }
+
+            if (!contentType) {
+                showNotification('error', 'Champ requis', 'Veuillez sélectionner un type de contenu');
+                return;
+            }
+
+            if (!uploadedFileUrl) {
+                showNotification('error', 'Média requis', 'Veuillez uploader une image ou vidéo');
+                return;
+            }
+
+            if (publishMode === 'schedule' && !scheduleTime) {
+                showNotification('error', 'Date requise', 'Veuillez sélectionner une date et heure');
+                return;
+            }
+
+            try {
+                // Parser account value (format JSON string)
+                const accountData = JSON.parse(accountValue);
+
+                const btn = this;
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Publication en cours...';
+
+                if (publishMode === 'now') {
+                    // Publication immédiate
+                    const response = await fetch('/api/content/publish-now', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            account_id: accountData.id,
+                            account_type: accountData.platform,
+                            content_type: contentType,
+                            caption: caption,
+                            media_url: uploadedFileUrl,
+                            media_type: uploadedFile.media_type
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        showNotification('success', 'Publié !', `Votre ${contentType} a été publié avec succès`);
+
+                        // Réinitialiser le formulaire
+                        document.getElementById('caption').value = '';
+                        document.getElementById('fileInput').value = '';
+                        document.getElementById('uploadPreview').innerHTML = '';
+                        uploadedFile = null;
+                        uploadedFileUrl = null;
+                    } else {
+                        throw new Error(data.error || 'Erreur de publication');
+                    }
+                } else {
+                    // Publication programmée
+                    const response = await fetch('/api/content/schedule', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            account_id: accountData.id,
+                            account_type: accountData.platform,
+                            content_type: contentType,
+                            scheduled_time: scheduleTime,
+                            caption: caption,
+                            media_url: uploadedFileUrl,
+                            media_type: uploadedFile.media_type
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        showNotification('success', 'Programmé !', `Votre ${contentType} sera publié le ${new Date(scheduleTime).toLocaleString('fr-FR')}`);
+
+                        // Réinitialiser le formulaire
+                        document.getElementById('caption').value = '';
+                        document.getElementById('fileInput').value = '';
+                        document.getElementById('uploadPreview').innerHTML = '';
+                        document.getElementById('scheduleTime').value = '';
+                        uploadedFile = null;
+                        uploadedFileUrl = null;
+
+                        // Recharger la liste des posts programmés
+                        loadScheduledContent();
+                    } else {
+                        throw new Error(data.error || 'Erreur de programmation');
+                    }
+                }
+
+                btn.disabled = false;
+                btn.innerHTML = '📤 Publier';
+
+            } catch (error) {
+                console.error('Erreur publication:', error);
+                showNotification('error', 'Erreur', error.message);
+                this.disabled = false;
+                this.innerHTML = '📤 Publier';
+            }
+        });
+
+        // ==============================
+        // Charger le contenu programmé
+        // ==============================
+
+        async function loadScheduledContent() {
+            try {
+                const response = await fetch('/api/content/scheduled', {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    document.getElementById('scheduled-content-list').innerHTML = `
+                        <div class="empty-documents">
+                            <div style="font-size: 2rem; margin-bottom: 10px;">📅</div>
+                            <p>Aucun contenu programmé</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const data = await response.json();
+                const listDiv = document.getElementById('scheduled-content-list');
+
+                if (!data.content || data.content.length === 0) {
+                    listDiv.innerHTML = `
+                        <div class="empty-documents">
+                            <div style="font-size: 2rem; margin-bottom: 10px;">📅</div>
+                            <p>Aucun contenu programmé</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                listDiv.innerHTML = data.content.map(item => {
+                    const date = new Date(item.scheduled_time);
+                    const typeEmojis = {
+                        post: '📝',
+                        story: '📸',
+                        reel: '🎬'
+                    };
+
+                    return `
+                        <div style="background: var(--bg-card-hover); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div style="flex: 1;">
+                                    <p style="margin: 0 0 8px 0; color: var(--text-primary); font-weight: 600;">
+                                        ${typeEmojis[item.content_type] || '📄'} ${item.content_type.charAt(0).toUpperCase() + item.content_type.slice(1)}
+                                    </p>
+                                    <p style="margin: 0 0 8px 0; color: var(--text-secondary); font-size: 0.9rem;">
+                                        ${item.caption ? item.caption.substring(0, 60) + '...' : 'Sans description'}
+                                    </p>
+                                    <p style="margin: 0; color: var(--primary-orange); font-size: 0.85rem;">
+                                        📅 ${date.toLocaleDateString('fr-FR')} à ${date.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
+                                    </p>
+                                </div>
+                                <button
+                                    onclick="deleteScheduledContent(${item.id})"
+                                    class="btn"
+                                    style="background: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; padding: 6px 12px; font-size: 0.85rem;"
+                                >
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Erreur lors du chargement du contenu programmé:', error);
+                document.getElementById('scheduled-content-list').innerHTML = `
+                    <div style="color: var(--error-red); padding: 20px; text-align: center;">
+                        ❌ Erreur lors du chargement
+                    </div>
+                `;
+            }
+        }
+
+        // Supprimer un contenu programmé
+        async function deleteScheduledContent(contentId) {
+            try {
+                const response = await fetch(`/api/content/scheduled/${contentId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    showNotification('success', 'Supprimé', 'Le contenu programmé a été supprimé');
+                    loadScheduledContent();
+                } else {
+                    showNotification('error', 'Erreur', 'Impossible de supprimer le contenu');
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                showNotification('error', 'Erreur', 'Impossible de supprimer le contenu');
+            }
+        }
+
+        // ==============================
+        // Gestion de l'agent IA global
+        // ==============================
+
+        document.getElementById('global-agent-active')?.addEventListener('change', async function() {
+            const isActive = this.checked;
+
+            showNotification('info', 'Configuration', `Agent IA ${isActive ? 'activé' : 'désactivé'} globalement`);
+
+            // TODO: Appeler l'API pour activer/désactiver tous les agents
+            // Pour l'instant, c'est juste une notification
+        });
     </script>
 </body>
 </html>
