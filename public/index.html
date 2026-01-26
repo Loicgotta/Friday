@@ -387,6 +387,16 @@
                     <div class="logo-icon">F</div>
                     <div class="logo-text">Friday</div>
                 </div>
+
+                <!-- Toggle de thème -->
+                <div class="theme-toggle-container">
+                    <span class="theme-label">🌙</span>
+                    <label class="theme-toggle">
+                        <input type="checkbox" id="theme-toggle-checkbox">
+                        <span class="theme-slider"></span>
+                    </label>
+                    <span class="theme-label">☀️</span>
+                </div>
             </div>
 
             <div class="sidebar-nav">
@@ -796,6 +806,29 @@
 
     <!-- script.js removed - all functionality is now inline -->
     <script>
+        // ==============================
+        // Gestion du thème (Dark/Light)
+        // ==============================
+
+        // Charger le thème sauvegardé ou utiliser le thème par défaut (dark)
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        // Mettre à jour l'état du checkbox selon le thème
+        const themeToggle = document.getElementById('theme-toggle-checkbox');
+        if (themeToggle) {
+            themeToggle.checked = savedTheme === 'light';
+
+            // Gérer le changement de thème
+            themeToggle.addEventListener('change', function() {
+                const newTheme = this.checked ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+
+                console.log('Thème changé:', newTheme);
+            });
+        }
+
         // Gestion des tabs
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
