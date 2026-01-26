@@ -1078,15 +1078,25 @@
 
             // Charger la config existante pour cette page
             try {
-                const response = await fetch(`/api/agent/config/${pageId}`);
+                const response = await fetch(`/api/agent/config/${pageId}`, {
+                    credentials: 'include'
+                });
                 if (response.ok) {
                     const config = await response.json();
-                    document.getElementById('page-agent-active').checked = config.is_active || false;
+                    document.getElementById('page-agent-active').checked = config.is_active === 1 || config.is_active === true;
                     document.getElementById('prompt').value = config.prompt || '';
                     document.getElementById('tone').value = config.tone || 'friendly';
                     document.getElementById('language').value = config.language || 'fr';
-                    document.getElementById('auto-reply').checked = config.auto_reply !== false;
-                    document.getElementById('delay').value = config.delay || 0;
+                    document.getElementById('auto-reply').checked = config.auto_reply_enabled === 1 || config.auto_reply_enabled === true;
+                    document.getElementById('delay').value = config.reply_delay_minutes || 0;
+                } else if (response.status === 404) {
+                    // Pas de config existante, réinitialiser le formulaire
+                    document.getElementById('page-agent-active').checked = false;
+                    document.getElementById('prompt').value = '';
+                    document.getElementById('tone').value = 'friendly';
+                    document.getElementById('language').value = 'fr';
+                    document.getElementById('auto-reply').checked = true;
+                    document.getElementById('delay').value = 0;
                 }
             } catch (error) {
                 console.error('Erreur lors du chargement de la config:', error);
@@ -1102,21 +1112,30 @@
                 return;
             }
 
+            const prompt = document.getElementById('prompt').value;
+
+            if (!prompt || prompt.trim() === '') {
+                showNotification('error', 'Champ requis', 'Veuillez entrer un prompt pour l\'agent');
+                return;
+            }
+
             const config = {
+                page_id: pageId,
                 is_active: document.getElementById('page-agent-active').checked,
-                prompt: document.getElementById('prompt').value,
+                prompt: prompt,
                 tone: document.getElementById('tone').value,
                 language: document.getElementById('language').value,
-                auto_reply: document.getElementById('auto-reply').checked,
-                delay: parseInt(document.getElementById('delay').value) || 0
+                auto_reply_enabled: document.getElementById('auto-reply').checked,
+                reply_delay_minutes: parseInt(document.getElementById('delay').value) || 0
             };
 
             try {
-                const response = await fetch(`/api/agent/config/${pageId}`, {
+                const response = await fetch('/api/agent/config', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
+                    credentials: 'include',
                     body: JSON.stringify(config)
                 });
 
