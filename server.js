@@ -748,6 +748,97 @@ app.get('/auth/logout', (req, res) => {
 });
 
 /**
+ * Route de debug pour l'agent IA
+ */
+app.get('/api/debug/agent', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  try {
+    const user = await db.getUserByFacebookId(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Récupérer toutes les configs de cet utilisateur
+    const userConfigs = await db.getUserAgentConfigs(user.id);
+
+    // Récupérer les configs actives
+    const activeConfigs = await db.getActiveAgentConfigs();
+    const userActiveConfigs = activeConfigs.filter(c => c.user_id === user.id);
+
+    // Récupérer les commentaires traités
+    const processedComments = await new Promise((resolve, reject) => {
+      db.db.all(
+        'SELECT COUNT(*) as count FROM processed_comments WHERE user_id = ?',
+        [user.id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows[0]?.count || 0);
+        }
+      );
+    });
+
+    // Vérifier les pages
+    const pages = JSON.parse(user.pages || '[]');
+
+    // Vérifier les comptes Instagram
+    const igAccounts = await db.getInstagramAccountsByUserId(req.session.userId);
+
+    res.json({
+      status: 'ok',
+      user: {
+        id: user.id,
+        name: user.name,
+        facebook_id: user.facebook_id
+      },
+      pages: {
+        facebook: pages.length,
+        instagram: igAccounts.length,
+        list: pages.map(p => ({ id: p.id, name: p.name }))
+      },
+      instagram_accounts: igAccounts.map(a => ({
+        id: a.instagram_id,
+        username: a.username,
+        name: a.name
+      })),
+      agent_configs: {
+        total: userConfigs.length,
+        active: userActiveConfigs.length,
+        configs: userConfigs.map(c => ({
+          id: c.id,
+          page_id: c.page_id,
+          is_active: c.is_active === 1,
+          has_prompt: !!c.prompt,
+          prompt_preview: c.prompt ? c.prompt.substring(0, 100) + '...' : null,
+          tone: c.tone,
+          language: c.language,
+          auto_reply: c.auto_reply_enabled === 1,
+          delay: c.reply_delay_minutes
+        }))
+      },
+      monitoring: {
+        is_running: commentMonitor.isRunning,
+        check_interval_seconds: commentMonitor.checkInterval / 1000,
+        comments_processed: processedComments
+      },
+      openai: {
+        configured: !!process.env.OPENAI_API_KEY,
+        key_preview: process.env.OPENAI_API_KEY ?
+          process.env.OPENAI_API_KEY.substring(0, 10) + '...' + process.env.OPENAI_API_KEY.substring(process.env.OPENAI_API_KEY.length - 4) :
+          'NOT SET'
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur debug agent:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+/**
  * Route 7: Ajouter un compte Instagram manuellement via token
  */
 app.post('/api/instagram/add', async (req, res) => {

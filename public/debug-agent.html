@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Agent IA - Friday</title>
+    <link rel="stylesheet" href="friday-theme.css">
+    <style>
+        .debug-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .debug-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .debug-section h2 {
+            margin-top: 0;
+            color: var(--primary-orange);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status-ok {
+            background: rgba(76, 175, 80, 0.2);
+            color: var(--success-green);
+        }
+        .status-error {
+            background: rgba(244, 67, 54, 0.2);
+            color: var(--error-red);
+        }
+        .status-warning {
+            background: rgba(255, 107, 53, 0.2);
+            color: var(--primary-orange);
+        }
+        .info-grid {
+            display: grid;
+            gap: 15px;
+        }
+        .info-row {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            padding: 10px;
+            background: var(--bg-dark);
+            border-radius: 4px;
+        }
+        .info-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        .info-value {
+            color: var(--text-primary);
+        }
+        .config-card {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .btn-refresh {
+            background: var(--primary-orange);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-refresh:hover {
+            background: var(--primary-orange-hover);
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <h1 style="color: var(--text-primary);">🔧 Diagnostic Agent IA</h1>
+            <button class="btn-refresh" onclick="loadDebugInfo()">🔄 Rafraîchir</button>
+        </div>
+
+        <div id="debug-content">
+            <p style="color: var(--text-secondary);">Chargement...</p>
+        </div>
+    </div>
+
+    <script>
+        async function loadDebugInfo() {
+            try {
+                const response = await fetch('/api/debug/agent', {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        document.getElementById('debug-content').innerHTML = `
+                            <div class="debug-section">
+                                <h2>❌ Non authentifié</h2>
+                                <p>Vous devez être connecté avec Facebook pour voir ces informations.</p>
+                                <a href="/" style="color: var(--primary-orange);">Retour à l'accueil</a>
+                            </div>
+                        `;
+                        return;
+                    }
+                    throw new Error('Erreur lors du chargement');
+                }
+
+                const data = await response.json();
+                displayDebugInfo(data);
+            } catch (error) {
+                console.error('Erreur:', error);
+                document.getElementById('debug-content').innerHTML = `
+                    <div class="debug-section">
+                        <h2>❌ Erreur</h2>
+                        <p style="color: var(--error-red);">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayDebugInfo(data) {
+            const html = `
+                <!-- Statut général -->
+                <div class="debug-section">
+                    <h2>📊 Statut général</h2>
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <span class="info-label">Utilisateur:</span>
+                            <span class="info-value">${data.user.name} (ID: ${data.user.id})</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Monitoring:</span>
+                            <span class="info-value">
+                                ${data.monitoring.is_running ?
+                                    '<span class="status-badge status-ok">✅ Actif</span>' :
+                                    '<span class="status-badge status-error">❌ Inactif</span>'}
+                                (Vérification toutes les ${data.monitoring.check_interval_seconds}s)
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Commentaires traités:</span>
+                            <span class="info-value">${data.monitoring.comments_processed}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Clé OpenAI:</span>
+                            <span class="info-value">
+                                ${data.openai.configured ?
+                                    '<span class="status-badge status-ok">✅ Configurée</span> ' + data.openai.key_preview :
+                                    '<span class="status-badge status-error">❌ Non configurée</span>'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pages et comptes -->
+                <div class="debug-section">
+                    <h2>📄 Pages et comptes connectés</h2>
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <span class="info-label">Pages Facebook:</span>
+                            <span class="info-value">${data.pages.facebook}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Comptes Instagram:</span>
+                            <span class="info-value">${data.pages.instagram}</span>
+                        </div>
+                    </div>
+
+                    ${data.pages.list.length > 0 ? `
+                        <h3 style="margin-top: 20px; color: var(--text-secondary);">Pages Facebook:</h3>
+                        ${data.pages.list.map(p => `
+                            <div style="padding: 8px; background: var(--bg-dark); border-radius: 4px; margin: 5px 0;">
+                                📘 ${p.name} (ID: ${p.id})
+                            </div>
+                        `).join('')}
+                    ` : ''}
+
+                    ${data.instagram_accounts.length > 0 ? `
+                        <h3 style="margin-top: 20px; color: var(--text-secondary);">Comptes Instagram:</h3>
+                        ${data.instagram_accounts.map(a => `
+                            <div style="padding: 8px; background: var(--bg-dark); border-radius: 4px; margin: 5px 0;">
+                                📷 @${a.username} - ${a.name} (ID: ${a.id})
+                            </div>
+                        `).join('')}
+                    ` : ''}
+                </div>
+
+                <!-- Configurations agent -->
+                <div class="debug-section">
+                    <h2>🤖 Configurations Agent IA
+                        <span class="status-badge ${data.agent_configs.active > 0 ? 'status-ok' : 'status-error'}">
+                            ${data.agent_configs.active} active(s) / ${data.agent_configs.total} total
+                        </span>
+                    </h2>
+
+                    ${data.agent_configs.total === 0 ? `
+                        <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                            <p>❌ Aucune configuration d'agent trouvée</p>
+                            <p style="font-size: 0.9em;">Allez dans "Paramétrer l'agent" pour créer une configuration</p>
+                        </div>
+                    ` : data.agent_configs.configs.map(c => `
+                        <div class="config-card">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div style="flex: 1;">
+                                    <h3 style="margin: 0 0 10px 0; color: var(--text-primary);">
+                                        Page ID: ${c.page_id}
+                                        ${c.is_active ?
+                                            '<span class="status-badge status-ok">✅ Actif</span>' :
+                                            '<span class="status-badge status-error">❌ Inactif</span>'}
+                                    </h3>
+                                    <div class="info-grid" style="gap: 5px;">
+                                        <div style="color: var(--text-secondary); font-size: 0.9em;">
+                                            <strong>Prompt:</strong> ${c.has_prompt ?
+                                                '<span class="status-badge status-ok">✅ Défini</span>' :
+                                                '<span class="status-badge status-error">❌ Vide</span>'}
+                                        </div>
+                                        ${c.prompt_preview ? `
+                                            <div style="color: var(--text-secondary); font-size: 0.85em; font-style: italic;">
+                                                "${c.prompt_preview}"
+                                            </div>
+                                        ` : ''}
+                                        <div style="color: var(--text-secondary); font-size: 0.9em;">
+                                            <strong>Ton:</strong> ${c.tone} |
+                                            <strong>Langue:</strong> ${c.language} |
+                                            <strong>Auto-réponse:</strong> ${c.auto_reply ? 'Oui' : 'Non'} |
+                                            <strong>Délai:</strong> ${c.delay}min
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- Diagnostic -->
+                <div class="debug-section">
+                    <h2>🔍 Diagnostic</h2>
+                    ${getDiagnostic(data)}
+                </div>
+            `;
+
+            document.getElementById('debug-content').innerHTML = html;
+        }
+
+        function getDiagnostic(data) {
+            const issues = [];
+            const good = [];
+
+            // Vérifications
+            if (!data.openai.configured) {
+                issues.push('❌ <strong>Clé OpenAI non configurée</strong> - L\'agent ne peut pas générer de réponses');
+            } else {
+                good.push('✅ Clé OpenAI configurée');
+            }
+
+            if (!data.monitoring.is_running) {
+                issues.push('❌ <strong>Monitoring inactif</strong> - L\'agent ne surveille pas les commentaires');
+            } else {
+                good.push('✅ Monitoring actif');
+            }
+
+            if (data.agent_configs.total === 0) {
+                issues.push('❌ <strong>Aucune configuration</strong> - Créez une config dans "Paramétrer l\'agent"');
+            } else if (data.agent_configs.active === 0) {
+                issues.push('⚠️ <strong>Aucun agent actif</strong> - Activez au moins un agent');
+            } else {
+                good.push(`✅ ${data.agent_configs.active} agent(s) actif(s)`);
+            }
+
+            if (data.pages.facebook === 0 && data.pages.instagram === 0) {
+                issues.push('❌ <strong>Aucune page/compte connecté</strong> - Connectez Facebook ou Instagram');
+            } else {
+                good.push(`✅ ${data.pages.facebook + data.pages.instagram} page(s)/compte(s) connecté(s)`);
+            }
+
+            // Vérifier que les configs actives ont un prompt
+            const activeWithoutPrompt = data.agent_configs.configs.filter(c => c.is_active && !c.has_prompt);
+            if (activeWithoutPrompt.length > 0) {
+                issues.push('⚠️ <strong>Agent actif sans prompt</strong> - Ajoutez un prompt dans la configuration');
+            }
+
+            return `
+                ${good.length > 0 ? `
+                    <div style="margin-bottom: 15px;">
+                        ${good.map(g => `<div style="padding: 8px; color: var(--success-green);">${g}</div>`).join('')}
+                    </div>
+                ` : ''}
+
+                ${issues.length > 0 ? `
+                    <div style="background: rgba(244, 67, 54, 0.1); border-left: 4px solid var(--error-red); padding: 15px; border-radius: 4px;">
+                        <h3 style="margin: 0 0 10px 0; color: var(--error-red);">Problèmes détectés:</h3>
+                        ${issues.map(i => `<div style="padding: 5px 0;">${i}</div>`).join('')}
+                    </div>
+                ` : `
+                    <div style="background: rgba(76, 175, 80, 0.1); border-left: 4px solid var(--success-green); padding: 15px; border-radius: 4px;">
+                        <p style="margin: 0; color: var(--success-green); font-weight: 600;">
+                            ✅ Tout est configuré correctement ! L'agent devrait fonctionner.
+                        </p>
+                        <p style="margin: 10px 0 0 0; color: var(--text-secondary); font-size: 0.9em;">
+                            Si vous ne recevez pas de réponses, vérifiez que votre token Facebook n'est pas expiré.
+                        </p>
+                    </div>
+                `}
+            `;
+        }
+
+        // Charger au démarrage
+        loadDebugInfo();
+    </script>
+</body>
+</html>
