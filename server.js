@@ -109,11 +109,18 @@ app.get('/auth/facebook/callback', async (req, res) => {
 
   if (error) {
     console.error('Erreur OAuth:', error, error_description);
-    return res.redirect(`/?error=${encodeURIComponent(error_description || error)}`);
+
+    // Traduire les erreurs OAuth en messages plus clairs
+    let friendlyError = error_description || error;
+    if (error === 'access_denied') {
+      friendlyError = 'Connexion annulée - Vous devez autoriser les permissions pour continuer';
+    }
+
+    return res.redirect(`/?error=${encodeURIComponent(friendlyError)}`);
   }
 
   if (!code) {
-    return res.redirect('/?error=Code d\'autorisation manquant');
+    return res.redirect('/?error=Code d\'autorisation manquant - Veuillez réessayer');
   }
 
   try {
@@ -194,6 +201,13 @@ app.get('/auth/facebook/callback', async (req, res) => {
       console.log('  2. Le compte n\'est pas admin/éditeur des Pages');
       console.log('  3. Le compte n\'a pas le rôle Testeur/Développeur dans l\'app Facebook (mode Dev)');
       console.log('  4. Les permissions pages_show_list ne sont pas accordées');
+
+      // Rediriger avec un message d'erreur clair
+      return res.redirect(
+        `/?error=${encodeURIComponent(
+          'Aucune Page Facebook trouvée. Pour utiliser Friday, vous devez être administrateur d\'une Page Facebook liée à un compte Instagram Business.'
+        )}`
+      );
     }
 
     pages.forEach(page => {
@@ -226,6 +240,17 @@ app.get('/auth/facebook/callback', async (req, res) => {
           console.log(`⚠️ Erreur Instagram pour page ${page.name}:`, igError.response?.data || igError.message);
         }
       }
+    }
+
+    // Vérifier si au moins une page a un compte Instagram connecté
+    const hasInstagramAccount = pages.some(page => page.instagram_business_account);
+    if (!hasInstagramAccount) {
+      console.log('⚠️ AUCUN COMPTE INSTAGRAM TROUVÉ !');
+      return res.redirect(
+        `/?error=${encodeURIComponent(
+          'Aucun compte Instagram trouvé. Vos Pages Facebook doivent être liées à un compte Instagram Business ou Creator pour utiliser Friday.'
+        )}`
+      );
     }
 
     // Récupérer les comptes publicitaires (optionnel - nécessite ads_management)
@@ -290,12 +315,34 @@ app.get('/auth/facebook/callback', async (req, res) => {
     req.session.userId = userData.id;
     req.session.userName = userData.name;
 
-    // Rediriger vers la page principale (nouvelle interface unifiée)
-    res.redirect('/');
+    // Compter le nombre de comptes Instagram connectés
+    const instagramCount = pages.filter(p => p.instagram_account).length;
+
+    // Rediriger vers la page principale avec un message de succès
+    res.redirect(`/?success=${encodeURIComponent(
+      `Connexion réussie ! ${instagramCount} compte(s) Instagram trouvé(s).`
+    )}`);
 
   } catch (error) {
     console.error('Erreur lors de l\'échange du token:', error.response?.data || error.message);
-    res.redirect(`/?error=${encodeURIComponent('Erreur lors de l\'authentification')}`);
+
+    // Identifier le type d'erreur et fournir un message approprié
+    let errorMessage = 'Erreur lors de l\'authentification';
+
+    if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+      errorMessage = 'Impossible de se connecter à Facebook. Vérifiez votre connexion internet et réessayez.';
+    } else if (error.response?.data?.error) {
+      const fbError = error.response.data.error;
+      if (fbError.code === 190) {
+        errorMessage = 'Token d\'authentification invalide. Veuillez réessayer de vous connecter.';
+      } else if (fbError.code === 102 || fbError.code === 104) {
+        errorMessage = 'Permissions refusées. Assurez-vous d\'accepter toutes les permissions requises.';
+      } else if (fbError.message) {
+        errorMessage = `Erreur Facebook: ${fbError.message}`;
+      }
+    }
+
+    res.redirect(`/?error=${encodeURIComponent(errorMessage)}`);
   }
 });
 

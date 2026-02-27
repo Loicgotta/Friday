@@ -467,12 +467,45 @@
                     <div id="main-buttons-area">
                         <!-- Bouton de connexion (visible avant connexion) -->
                         <div id="login-area">
-                            <button id="facebook-login-btn" class="btn btn-primary" style="margin-bottom: 25px;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                                </svg>
-                                Se connecter avec Facebook
+                            <!-- Info prérequis -->
+                            <div class="card" style="background: rgba(33, 150, 243, 0.1); border-color: #2196F3; margin-bottom: 20px;">
+                                <h3 style="color: #2196F3; margin-bottom: 15px; font-size: 1.1rem;">ℹ️ Avant de vous connecter</h3>
+                                <p style="color: var(--text-secondary); margin-bottom: 10px; line-height: 1.6;">
+                                    Pour utiliser Friday, vous devez :
+                                </p>
+                                <ul style="color: var(--text-secondary); margin-left: 20px; line-height: 1.8;">
+                                    <li><strong>Avoir un compte Instagram Business ou Creator</strong> (les comptes personnels ne sont plus supportés)</li>
+                                    <li>Avoir lié votre compte Instagram à une Page Facebook</li>
+                                    <li>Être administrateur de la Page Facebook</li>
+                                </ul>
+                                <p style="color: var(--text-secondary); margin-top: 15px; font-size: 0.9rem;">
+                                    💡 <a href="https://help.instagram.com/502981923235522" target="_blank" style="color: #2196F3;">Comment convertir en compte Business/Creator</a>
+                                </p>
+                            </div>
+
+                            <!-- Bouton de connexion -->
+                            <button id="facebook-login-btn" class="btn btn-primary" style="margin-bottom: 25px; position: relative;">
+                                <span id="login-btn-content">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                    </svg>
+                                    Se connecter avec Facebook
+                                </span>
+                                <span id="login-btn-loading" style="display: none;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white" style="animation: spin 1s linear infinite;">
+                                        <circle cx="12" cy="12" r="10" stroke="white" stroke-width="4" fill="none" opacity="0.3"/>
+                                        <path d="M12 2 A10 10 0 0 1 22 12" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+                                    </svg>
+                                    Connexion en cours...
+                                </span>
                             </button>
+
+                            <style>
+                                @keyframes spin {
+                                    from { transform: rotate(0deg); }
+                                    to { transform: rotate(360deg); }
+                                }
+                            </style>
 
                             <div class="empty-documents">
                                 <div class="empty-icon">👥</div>
